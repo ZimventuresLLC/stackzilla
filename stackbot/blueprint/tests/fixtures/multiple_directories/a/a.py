@@ -1,0 +1,4 @@
+"""Testing."""
+
+class A:
+    """Testing."""
