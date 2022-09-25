@@ -1,5 +1,6 @@
 from stackbot.attribute import StackBotAttribute
 
+
 class Class:
     """ Parameters in this class are defined as class variables. """
     required_arg = StackBotAttribute(required=True, modify_rebuild=True)
