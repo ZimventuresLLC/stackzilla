@@ -7,20 +7,22 @@ from importlib import import_module
 from importlib.machinery import ModuleSpec
 from pathlib import Path
 from types import ModuleType
-from typing import List, Type
+from typing import List, Optional, Type
 
+from stackbot.blueprint.exceptions import ClassNotFound
 from stackbot.logging.core import CoreLogger
 
 
 class Importer:
     """Class to manage the import of an entire directory on disk."""
 
-    def __init__(self, path: str, class_filter: Type[object] = None):
+    def __init__(self, path: str, class_filter: Type[object] = None, package_root: Optional[str] = ''):
         """Initialize parameters and insert this class into the Python meta_path.
 
         Args:
             path (str): The filesystem path to the top level directory to be imported.
             class_filter (Type[object], optional): Only import classes inerhiting from this class. Defaults to None.
+            package_root (Optional[str]): Sandbox the imported modules into a package root defined by this name. defaults to ''
         """
         self._loaded: bool = False
         self.bp_path: str = path
@@ -34,7 +36,32 @@ class Importer:
         self._modules = {}
         self._classes: dict[str, Type[object]] = {}
 
+        self._package_root = package_root # Used for custom package roots
+
         sys.meta_path.insert(0, self)
+
+    def get_class(self, name: str) -> Type[object]:
+        """Fetch a previously imported class from the cache.
+
+        Args:
+            name (str): Full python path to the desired class
+
+        Raises:
+            ClassNotFound: Raised when the specified class is not found in the cache
+
+        Returns:
+            Type[object]: The desired class
+        """
+        full_path = name
+
+        if self._package_root != '':
+            full_path = f'{self._package_root}.{name}'
+        else:
+            full_path = f'..{name}'
+        try:
+            return self._classes[full_path]
+        except KeyError as exc:
+            raise ClassNotFound(name) from exc
 
     def unload(self):
         """Delete all imported packages, modules, and classes."""
@@ -51,15 +78,23 @@ class Importer:
             del package
 
         self._packages = {}
+
+        for class_name, class_obj in self._classes.items():
+            self._logger.debug(f'Deleting class: {class_name}')
+            del class_obj
+
+        self._classes = {}
+
         self._loaded = False
 
     def load(self):
         """Import the blueprint previously specified in the constructor."""
         # Import the top level directory as a module
-        # NOTE: Leave package='1' hard-coded. current_python_path() will never give us '.'
-        import_module(name='.', package='.')
 
-        self._current_python_path.append('.')
+        if self._package_root != '':
+            self._current_python_path.append(f'{self._package_root}')
+        else:
+            self._current_python_path.append('.')
 
         self._walk_packages(file_path=self.bp_path)
 
@@ -137,29 +172,51 @@ class Importer:
                     package=self.current_python_path
                 )
 
+                #self.exec_module(module=module)
+
                 # Fire off the callback to note that
                 self._modules[module.__name__] = module
                 self.on_module_found(module=module)
 
                 # Inform anyone that cares, a class was found.
                 for obj_name, obj in inspect.getmembers(module, inspect.isclass):
-                    if self._class_filter and issubclass(obj, self._class_filter):
-                        self._classes[obj_name] = obj
+                    if self._class_filter is None or issubclass(obj, self._class_filter):
+                        self._classes[f'{obj.__module__}.{obj.__name__}'] = obj
                         self.on_class_found(name=obj_name, obj=obj)
 
     def find_spec(self, name, path, _target=None):
         """Python import hook for checking if the package being imported can be handled."""
         self._logger.debug(f'find_spec({name = }, {path = }, {_target = })')
 
+        # Figure out if the {path}.{name} maps to somewhere in the package
+
+        if path:
+            pass
+        else:
+            path_on_disk = os.path.join(self.bp_path, f'{name}.py')
+            if os.path.exists(path_on_disk):
+                self._current_spec_path = path
+                return ModuleSpec(f'{self._package_root}.{name}', self)
+            elif name == '.':
+                self._current_spec_path = path
+                return ModuleSpec(name, self)
+            elif name == self._package_root:
+                self._current_spec_path = path
+                return ModuleSpec(name, self)
+            else:
+                self._logger.debug(f'Module ({path_on_disk}) not found')
+                return None
+
         # Ignore providers and resources
         if name.startswith('stackbot.provider') or name.startswith('stackbot.resource'):
             return None
 
         # We don't know how to handle this module
-        if path is None and name != '.':
+        if path is None and name != f'.{self._package_root}':
             return None
 
         # Save this to use when setting __package__ during module initialization
+
         self._current_spec_path = path
         return ModuleSpec(name, self)
 
@@ -171,20 +228,27 @@ class Importer:
     def exec_module(self, module):
         """Initialize packages and modules within an end-user blueprint."""
         # Special case for the root package
-        if module.__name__ == '.':
-            module.__path__ = '.'
+        if module.__name__ == f'{self._package_root}':
+            module.__path__ = f'{self._package_root}'
             return
+
+        # If the package root is being used as a prefix, remove it before trying
+        # to convert the python path into a file system path.
+        module_name = module.__name__
+        if self._package_root != '':
+            if module_name.startswith(f'{self._package_root}.'):
+                module_name = module_name.split(f'{self._package_root}.')[1]
 
         # Strip out the leading namespace, plus any path separators
         # Convert the module python path to a file system path (a.a.a -> a/a/a)
-        if module.__name__.startswith('..'):
+        if module_name.startswith('..'):
             # This is a top level subpackage
-            module_file_path = module.__name__[2:].replace('.', os.path.sep)
-        elif module.__name__.startswith('.'):
+            module_file_path = module_name[2:].replace('.', os.path.sep)
+        elif module_name.startswith('.'):
             # This is a top level module
-            module_file_path = module.__name__[1:].replace('.', os.path.sep)
+            module_file_path = module_name[1:].replace('.', os.path.sep)
         else:
-            module_file_path = module.__name__.replace('.', os.path.sep)
+            module_file_path = module_name.replace('.', os.path.sep)
 
         package_dir_path= os.path.join(self.bp_path, module_file_path)
         module_file_path = os.path.join(self.bp_path, f'{module_file_path}.py')
@@ -194,8 +258,10 @@ class Importer:
             module.__path__ = module.__name__
 
         elif os.path.exists(module_file_path):
+
+            # TODO: Set the module name to be correct (shouldn't be something like ..fileA)
+
             # This is a module
-            module.__name__ = module_file_path
             module.__package__ = self._current_spec_path
 
             self._logger.debug(f'Execing f{module_file_path} into module {module.__name__}')

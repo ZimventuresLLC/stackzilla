@@ -1,7 +1,7 @@
 """Testing."""
 
-class A:
+class ResourceA:
     """Testing."""
 
-class AA:
+class ResourceAA:
     """Testing."""

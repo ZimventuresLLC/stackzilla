@@ -1,7 +1,7 @@
 """Testing."""
 
-from .fileA import AA
+from .fileA import ResourceA
 
 
-class C(AA):
+class ResourceC(ResourceA):
     """Testing."""
