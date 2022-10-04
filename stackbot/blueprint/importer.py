@@ -1,4 +1,6 @@
 """Import modules from disk."""
+from dataclasses import dataclass
+from genericpath import isfile
 import inspect
 import os
 import pkgutil
@@ -11,6 +13,13 @@ from typing import List, Optional, Type
 
 from stackbot.blueprint.exceptions import ClassNotFound
 from stackbot.logging.core import CoreLogger
+
+@dataclass
+class ModuleInfo:
+    """Data structure to hold information about loaded modules"""
+    path: str
+    data: str
+    module: ModuleType
 
 
 class Importer:
@@ -33,7 +42,7 @@ class Importer:
         self._logger: CoreLogger = CoreLogger('importer')
 
         self._packages = {}
-        self._modules = {}
+        self._modules: dict[ModuleInfo] = {}
         self._classes: dict[str, Type[object]] = {}
 
         self._package_root = package_root # Used for custom package roots
@@ -65,10 +74,10 @@ class Importer:
 
     def unload(self):
         """Delete all imported packages, modules, and classes."""
-        for module in self._modules.values():
-            self._logger.debug(f'Deleting module: {module.__name__}')
-            del sys.modules[module.__spec__.name]
-            del module
+        for module_info in self._modules.values():
+            self._logger.debug(f'Deleting module: {module_info.module.__name__}')
+            del sys.modules[module_info.module.__spec__.name]
+            del module_info.module
 
         self._modules = {}
 
@@ -114,6 +123,11 @@ class Importer:
     def classes(self) -> dict[str, Type[object]]:
         """Fetch a list of all the imported classes which matched any specified import filters."""
         return self._classes
+
+    @property
+    def modules(self) -> dict[str, ModuleInfo]:
+        """Fetch all of the modules that were loaded by the importer."""
+        return self._modules
 
     @property
     def current_python_path(self):
@@ -172,15 +186,16 @@ class Importer:
                     package=self.current_python_path
                 )
 
-                #self.exec_module(module=module)
-
-                # Fire off the callback to note that
-                self._modules[module.__name__] = module
                 self.on_module_found(module=module)
 
                 # Inform anyone that cares, a class was found.
                 for obj_name, obj in inspect.getmembers(module, inspect.isclass):
                     if self._class_filter is None or issubclass(obj, self._class_filter):
+
+                        # If the module starts with 'stackbot.provider', ignore it
+                        if obj.__module__.startswith('stackbot.provider'):
+                            continue
+
                         self._classes[f'{obj.__module__}.{obj.__name__}'] = obj
                         self.on_class_found(name=obj_name, obj=obj)
 
@@ -207,8 +222,8 @@ class Importer:
                 self._logger.debug(f'Module ({path_on_disk}) not found')
                 return None
 
-        # Ignore providers and resources
-        if name.startswith('stackbot.provider') or name.startswith('stackbot.resource'):
+        # Ignore StackBot internals and any providers
+        if name.startswith('stackbot.'):
             return None
 
         # We don't know how to handle this module
@@ -259,14 +274,18 @@ class Importer:
 
         elif os.path.exists(module_file_path):
 
-            # TODO: Set the module name to be correct (shouldn't be something like ..fileA)
-
             # This is a module
             module.__package__ = self._current_spec_path
 
             self._logger.debug(f'Execing f{module_file_path} into module {module.__name__}')
+            module_file_data = ''
             with open(module_file_path, mode='r', encoding="utf-8") as module_file:
-                exec(module_file.read(), module.__dict__) # pylint: disable=exec-used
+                module_file_data = module_file.read()
+                exec(module_file_data, module.__dict__) # pylint: disable=exec-used
+
+            # Save off the module
+            self._modules[module.__name__] = ModuleInfo(path=module.__name__, module=module, data=module_file_data)
+
         else:
             err_msg = f'exec_moudle()\n\t{module.__name__ = }\n\t{package_dir_path = }\n\t{module_file_path = }'
             self._logger.critical(err_msg)

@@ -1,17 +1,18 @@
 """Abstract base class for all database interfaces."""
 from abc import ABC, abstractmethod
-from typing import Any, List, Type
+import typing
+from typing import Any, List, Optional, Type
 
-from stackbot.attribute import StackBotAttribute
-from stackbot.resource import StackBotResource
-
+if typing.TYPE_CHECKING:
+    from stackbot.resource import StackBotResource
 
 class StackBotDBBase(ABC):
     """Interface definition for concrete database implementations."""
 
     # This class variable is setup once and then referenced by the entire
     # application to determine which database interface to use
-    provider = Type['StackBotDBBase']
+    provider: Type['StackBotDBBase'] = None
+    static_name: str = None
 
     def __init__(self, name: str) -> None:
         """Base database class constructor.
@@ -21,6 +22,7 @@ class StackBotDBBase(ABC):
         """
         super().__init__()
         self._name = name
+        StackBotDBBase.static_name = name
 
     @property
     def name(self):
@@ -59,8 +61,11 @@ class StackBotDBBase(ABC):
             DatabaseNotFound: When there is no open database connection.
         """
 
+    ###############################################################################
+    # Methods for interacting with StackBotResource objects
+    ###############################################################################
     @abstractmethod
-    def create_resource(self, resource: StackBotResource):
+    def create_resource(self, resource: 'StackBotResource') -> None:
         """Create a new resource in the database.
 
         Args:
@@ -68,18 +73,18 @@ class StackBotDBBase(ABC):
         """
 
     @abstractmethod
-    def get_resource(self, name: str) -> StackBotResource:
+    def get_resource(self, path: str) -> 'StackBotResource':
         """Query the database for a single resource.
 
         Args:
-            name (str): Full python path to the resource. Ex: servers.MyWebServer
+            path (str): Full python path to the resource. Ex: servers.MyWebServer
 
         Returns:
             StackBotResource: The deserielized resource
         """
 
     @abstractmethod
-    def get_all_resources(self) -> List[StackBotResource]:
+    def get_all_resources(self) -> List['StackBotResource']:
         """Fetch all of the available resources from the database.
 
         Returns:
@@ -87,7 +92,7 @@ class StackBotDBBase(ABC):
         """
 
     @abstractmethod
-    def update_resource(self, resource: StackBotResource) -> None:
+    def update_resource(self, resource: 'StackBotResource') -> None:
         """Update the values for an existing resource.
 
         Args:
@@ -95,13 +100,47 @@ class StackBotDBBase(ABC):
         """
 
     @abstractmethod
-    def delete_resource(self, name: str) -> None:
+    def delete_resource(self, path: str) -> None:
         """Delete a single StackBotResource item in the database.
 
         Args:
-            name (str): Name of the StackBotResource item to delete
+            path (str): Python path of the StackBotResource item to delete
         """
 
+    ###############################################################################
+    # Methods for interacting with StackBotAttribute objects
+    ###############################################################################
+    @abstractmethod
+    def create_attribute(self, resource: 'StackBotResource', name: str, value: Any):
+        """Adds a new attribute to the database.
+
+        Args:
+            name (str): The name of the attribute to create
+            value (Any): The value to assign to the newly created attribute
+        """
+
+    @abstractmethod
+    def delete_attribute(self, resource: 'StackBotResource', name: str):
+        """Delete an attribute previously added to the database.
+
+        Args:
+            resource (StackBotResource): The resource that the attribute belongs to
+            name (str): The name of the attribute to delete
+        """
+
+    @abstractmethod
+    def update_attribute(self, resource: 'StackBotResource', name: str, value: Any):
+        """Update a previously created attribute.
+
+        Args:
+            resource (StackBotResource): The resource that the attribute belongs to
+            name (str): The attribute name to update
+            value (Any): The new value to assign to the attribute
+        """
+
+    ###############################################################################
+    # Methods for interacting with the meatadata facility
+    ###############################################################################
     @abstractmethod
     def set_metadata(self, key: str, value: Any) -> None:
         """Set the value for the specified metadata key.
@@ -146,3 +185,59 @@ class StackBotDBBase(ABC):
         Returns:
             bool: True if the metadata key exists, False otherwise
         """
+
+    ###############################################################################
+    # CRUD methods for working with blueprint modules and packages
+    ###############################################################################
+    @abstractmethod
+    def create_blueprint_module(self, path: str, data: Optional[str] = None) -> None:
+        """Create a blueprint module within the database.
+
+        Args:
+            path (str): The Python path to the module
+            data (str): Contents of the module file. If not specified, the module is actually a package. Defaults to None.
+        """
+
+    @abstractmethod
+    def get_blueprint_module(self, path: str) -> str:
+        """Fetch the module data for a specified Python path.
+
+        Args:
+            path (str): The full Python path to the module
+
+        Returns:
+            str: Contents of the module file.
+        """
+
+    @abstractmethod
+    def get_blueprint_modules(self) -> List[str]:
+        """Query all of the available modules.
+
+        Returns:
+            List[str]: A list of Python paths, each represenging a module
+        """
+
+    @abstractmethod
+    def update_blueprint_module(self, path: str, data: str) -> None:
+        """Update the contents for an existing module.
+
+        Args:
+            path (str): Full Python path to the module
+            data (str): Contents of the module file
+        """
+
+    @abstractmethod
+    def delete_blueprint_module(self, path: str) -> None:
+        """Delete an existing module
+
+        Args:
+            path (str): Full Python path to the module
+        """
+
+    @abstractmethod
+    def delete_all_blueprint_modules(self) -> None:
+        """Delete all of the blueprint modules."""
+        
+class StackBotDB:
+    """Singleton DB object """
+    db: StackBotDBBase = None

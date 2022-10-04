@@ -28,18 +28,18 @@ class StackBotAttribute:
 
     def __set_name__(self, owner, name):
         """Called by Python to let the descriptor class know the parameter name holding this class."""
-        self.public_name = name
+        self.name = name
 
     def __set__(self, instance, value):
         """Called by Python to set the value of the parameter."""
-        instance.__dict__[self.public_name] = value
+        instance.__dict__[self.name] = value
 
     def __get__(self, instance, _owner):
         """Called by Python to fetch the value of the parameter."""
         if instance is None:
             return self
 
-        if self.public_name not in instance.__dict__:
+        if self.name not in instance.__dict__:
             return self.default
 
-        return instance.__dict__[self.public_name]
+        return instance.__dict__[self.name]

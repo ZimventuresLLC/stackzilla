@@ -5,41 +5,55 @@ LOGGING_CONFIG = {
     'version': 1,
     'disable_existing_loggers': True,
     'formatters': {
-        'standard': {
+        'core': {
             'format': '%(asctime)s (%(levelname)s:stackbot-%(component)s) %(message)s'
+        },
+        'provider': {
+            'format': '%(asctime)s (%(levelname)s:%(provider)s) %(message)s'
         },
     },
     'handlers': {
-        'default': {
+        'core': {
             'level': 'DEBUG',
-            'formatter': 'standard',
+            'formatter': 'core',
             'class': 'logging.StreamHandler',
             'stream': 'ext://sys.stdout',  # Default is stderr
         },
+        'provider': {
+            'level': 'DEBUG',
+            'formatter': 'provider',
+            'class': 'logging.StreamHandler',
+            'stream': 'ext://sys.stdout',
+        }
     },
     'loggers': {
         '': {  # root logger
-            'handlers': ['default'],
+            'handlers': ['core'],
             'level': 'WARNING',
             'propagate': False
         },
         'stackbot.importer': {
-            'handlers': ['default'],
+            'handlers': ['core'],
             'level': 'DEBUG',
             'propagate': False
         },
         'stackbot.StackBotSQLiteDB': {
-            'handlers': ['default'],
+            'handlers': ['core'],
             'level': 'DEBUG',
             'propagate': False
         },
         'stackbot.graph': {
-            'handlers': ['default'],
+            'handlers': ['core'],
+            'level': 'DEBUG',
+            'propagate': False
+        },
+        'stackbot-test:volume': {
+            'handlers': ['provider'],
             'level': 'DEBUG',
             'propagate': False
         },
         '__main__': {  # if __name__ == '__main__'
-            'handlers': ['default'],
+            'handlers': ['core'],
             'level': 'DEBUG',
             'propagate': False
         },

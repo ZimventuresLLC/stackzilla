@@ -1,3 +1,4 @@
+import inspect
 from stackbot.attribute import StackBotAttribute
 
 
@@ -20,6 +21,16 @@ class Instance:
         self.default_int = StackBotAttribute(default=42)
         self.default_float = StackBotAttribute(default=88.0)
         self.default_string = StackBotAttribute(default='GREAT SCOTT!')
+
+
+class MyClass(Class):
+    """A class that defines Attribures from the base class."""
+
+    def __init__(self) -> None:
+        super().__init__()
+
+        self.required_arg = "StackBot"
+
 
 
 class ChildObject(Class):
@@ -89,3 +100,19 @@ def test_lists():
     """Enure that the list attributes are set and fetched correctly."""
     obj = ListTest()
     assert(obj.required_arg == [1, 2, 3])
+
+def test_programatic_access():
+    """Make sure that attributes can be programatically accessed."""
+
+    my_class = MyClass()
+
+    attribute_count = 0
+    for name, value in inspect.getmembers(MyClass):
+        if isinstance(value, StackBotAttribute):
+            attribute_count += 1
+            print(f'{name} : {my_class.__dict__.get(name, value.default)}')
+
+    assert attribute_count == 6
+    assert my_class.required_arg == "StackBot"
+    assert my_class.default_string == "GREAT SCOTT!"
+    assert my_class.default_int == 42

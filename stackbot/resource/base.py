@@ -1,7 +1,89 @@
 """Base class for all user defined resources."""
+from abc import abstractmethod
+import inspect
+from typing import Dict, List
+
+from stackbot.attribute import StackBotAttribute
+from stackbot.database.base import StackBotDB
+from stackbot.database.exceptions import AttributeNotFound
 
 class StackBotResource:
+
+
     """Base class for all user defined resources."""
 
     def __init__(self) -> None:
         """Base constructor for all StackBot resource types."""
+
+    @classmethod
+    def path(cls) -> str:
+        """A unique name (within the blueprint) for this resource."""
+        return f'{cls.__module__}.{cls.__name__}'
+
+    def create(self) -> None:
+        """Create a new resource."""
+
+    def update(self) -> None:
+        """Apply the changes to this resource."""
+
+    def delete(self) -> None:
+        """Delete a previously created resource."""
+
+    @abstractmethod
+    def depends_on(self) -> List['StackBotResource']:
+        """Return a list of other resources that must be applied before this resource can be applied.
+
+        Returns:
+            List[StackBotResource]: List of StackBotResource classes that must be applied prior to this resource.
+        """
+        return []
+
+    @abstractmethod
+    def verify(self) -> None:
+        """Perform verification logic for the resource."""
+
+    def get_attribute(self, name) -> StackBotAttribute:
+        """Given an attribute name, fetch the StackBotAttribute object
+
+        Args:
+            name (_type_): Attribute name within the resource class definition
+
+        Raises:
+            AttributeNotFound: Raised if the attribute is not found
+
+        Returns:
+            StackBotAttribute: The StackBotAttribute object
+        """
+        # TODO: Is there a better way to find this?
+        for attr_name, obj in inspect.getmembers(self.__class__):
+            if attr_name == name:
+                return obj
+
+        raise AttributeNotFound
+
+    @property
+    def attributes(self) -> Dict[str, StackBotAttribute]:
+        """Fetch all of the StackBotAttribute objects defined for the class.
+
+        Returns:
+            Dict[str, StackBotAttribute]: List of StackBotAttribute objects on the class.
+        """
+        results = {}
+
+        # Find all of the class variables (NOT instance vars) that derive from the StackBotAttribute class
+        for name, obj in inspect.getmembers(self.__class__):
+            if isinstance(obj, StackBotAttribute):
+                # Save off the StackBotAttribute in the results
+                results[name] = obj
+
+                # Grab the value of the attribute from our own dictionary, storing it into the StackBotAttribute instance itself
+                results[name].value = self.__dict__.get(name, obj.default)
+
+        return results
+
+    def create_in_db(self):
+        """Persist the resource, and its parameters in the database."""
+        StackBotDB.db.create_resource(resource=self)
+
+        for name in self.attributes:
+            StackBotDB.db.create_attribute(resource=self, name=name, value=getattr(self, name))
