@@ -1,7 +1,7 @@
 """Class for interacting with end-user blueprints."""
 
-from stackbot.blueprint.exceptions import NotLoaded
-from stackbot.blueprint.importer import Importer
+from stackbot.importer.exceptions import NotLoaded
+from stackbot.importer.importer import Importer
 from stackbot.database.base import StackBotDB
 from stackbot.graph import Graph
 from stackbot.resource.base import StackBotResource

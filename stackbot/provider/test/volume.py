@@ -1,5 +1,5 @@
 from typing import List
-from stackbot.resource.base import StackBotResource
+from stackbot.resource.base import StackBotResource, ResourceVersion
 from stackbot.attribute.attribute import StackBotAttribute
 from stackbot.logging.provider import ProviderLogger
 
@@ -20,3 +20,7 @@ class Volume(StackBotResource):
 
     def depends_on(self) -> List['StackBotResource']:
         return super().depends_on()
+
+    @classmethod
+    def version(cls) -> ResourceVersion:
+        return ResourceVersion(major=1, minor=0, build=0, name='FCS')

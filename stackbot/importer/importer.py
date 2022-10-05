@@ -10,7 +10,8 @@ from pathlib import Path
 from types import ModuleType
 from typing import List, Optional, Type
 
-from stackbot.blueprint.exceptions import ClassNotFound
+from stackbot.importer.base import BaseImporter
+from stackbot.importer.exceptions import ClassNotFound
 from stackbot.logging.core import CoreLogger
 
 @dataclass
@@ -21,7 +22,7 @@ class ModuleInfo:
     module: ModuleType
 
 
-class Importer:
+class Importer(BaseImporter):
     """Class to manage the import of an entire directory on disk."""
 
     def __init__(self, path: str, class_filter: Type[object] = None, package_root: Optional[str] = ''):
@@ -32,68 +33,10 @@ class Importer:
             class_filter (Type[object], optional): Only import classes inerhiting from this class. Defaults to None.
             package_root (Optional[str]): Sandbox the imported modules into a package root defined by this name. defaults to ''
         """
-        self._loaded: bool = False
+        super().__init__(class_filter=class_filter, package_root=package_root)
+
         self.bp_path: str = path
         self.current_file_path: Path = self.bp_path
-        self._current_python_path: List[str] = []
-        self._current_spec_path: str = ''
-        self._class_filter = class_filter
-        self._logger: CoreLogger = CoreLogger('importer')
-
-        self._packages = {}
-        self._modules: dict[ModuleInfo] = {}
-        self._classes: dict[str, Type[object]] = {}
-
-        self._package_root = package_root # Used for custom package roots
-
-        sys.meta_path.insert(0, self)
-
-    def get_class(self, name: str) -> Type[object]:
-        """Fetch a previously imported class from the cache.
-
-        Args:
-            name (str): Full python path to the desired class
-
-        Raises:
-            ClassNotFound: Raised when the specified class is not found in the cache
-
-        Returns:
-            Type[object]: The desired class
-        """
-        full_path = name
-
-        if self._package_root != '':
-            full_path = f'{self._package_root}.{name}'
-        else:
-            full_path = f'..{name}'
-        try:
-            return self._classes[full_path]
-        except KeyError as exc:
-            raise ClassNotFound(name) from exc
-
-    def unload(self):
-        """Delete all imported packages, modules, and classes."""
-        for module_info in self._modules.values():
-            self._logger.debug(f'Deleting module: {module_info.module.__name__}')
-            del sys.modules[module_info.module.__spec__.name]
-            del module_info.module
-
-        self._modules = {}
-
-        for package_name, package in self._packages.items():
-            self._logger.debug(f'Deleting package: {package_name}')
-            del sys.modules[package.__spec__.name]
-            del package
-
-        self._packages = {}
-
-        for class_name, class_obj in self._classes.items():
-            self._logger.debug(f'Deleting class: {class_name}')
-            del class_obj
-
-        self._classes = {}
-
-        self._loaded = False
 
     def load(self):
         """Import the blueprint previously specified in the constructor."""
@@ -112,52 +55,6 @@ class Importer:
         self._current_spec_path: str = ''
 
         self._loaded = True
-
-    @property
-    def loaded(self) -> bool:
-        """Indicaes if the package has been loaded or unloaded."""
-        return self._loaded
-
-    @property
-    def classes(self) -> dict[str, Type[object]]:
-        """Fetch a list of all the imported classes which matched any specified import filters."""
-        return self._classes
-
-    @property
-    def modules(self) -> dict[str, ModuleInfo]:
-        """Fetch all of the modules that were loaded by the importer."""
-        return self._modules
-
-    @property
-    def current_python_path(self):
-        """Fetch the current Python path that is being imported.
-
-        Returns:
-            str: The current Python path being imported
-        """
-        return '.'.join(self._current_python_path)
-
-    def on_package_found(self, package: ModuleType):
-        """Event handler invoked for each package found during import.
-
-        Args:
-            package (ModuleType): The package that was found during import
-        """
-
-    def on_module_found(self, module: ModuleType):
-        """Event handler invoked for each module found during import.
-
-        Args:
-            module (ModuleType): The module that was found during import
-        """
-
-    def on_class_found(self, name: str, obj: Type[object]):
-        """Event handler which is called for each class during import.
-
-        Args:
-            name (str): Name of the class
-            obj (Type[object]): The class that was imported.
-        """
 
     def _walk_packages(self, file_path):
         for (module_loader, name, is_pkg) in pkgutil.walk_packages(path=[file_path]):

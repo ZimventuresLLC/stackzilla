@@ -5,8 +5,8 @@ from unittest.mock import Mock
 
 import pytest
 
-from stackbot.blueprint.exceptions import ClassNotFound
-from stackbot.blueprint.importer import Importer
+from stackbot.importer.exceptions import ClassNotFound
+from stackbot.importer.importer import Importer
 
 logger = logging.getLogger(__file__)
 
