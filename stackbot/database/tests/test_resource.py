@@ -2,7 +2,7 @@
 import pytest
 from stackbot.database.exceptions import AttributeNotFound, DuplicateAttribute, ResourceNotFound
 from stackbot.database.sqlite import StackBotSQLiteDB
-from stackbot.resource.base import StackBotResource
+from stackbot.resource.base import ResourceVersion, StackBotResource
 from stackbot.attribute import StackBotAttribute
 
 class Resource(StackBotResource):
@@ -10,9 +10,17 @@ class Resource(StackBotResource):
     required = StackBotAttribute(required=True)
     default_int = StackBotAttribute(required=False, default=42)
 
+    @classmethod
+    def version(cls) -> ResourceVersion:
+        return ResourceVersion(major=1, minor=0, build=0, name='FCS')
+
 class OtherResource(StackBotResource):
     """Demo Resource."""
     required = StackBotAttribute(required=True)
+
+    @classmethod
+    def version(cls) -> ResourceVersion:
+        return ResourceVersion(major=1, minor=0, build=0, name='FCS')
 
 class MyResource(Resource):
     def __init__(self) -> None:
@@ -32,11 +40,12 @@ def test_create_resource(database: StackBotSQLiteDB):
     my_other_resource = MyOtherResource()
 
     database.create_resource(resource=my_resource)
-    for name in my_resource.attributes.keys():
+    for name in my_resource.attributes:
         database.create_attribute(resource=my_resource, name=name, value=getattr(my_resource, name))
 
     db_resource = database.get_resource(path='stackbot.database.tests.test_resource.MyResource')
     assert db_resource.__class__ == MyResource
+    assert db_resource.version() == MyResource.version()
 
     # Get all of the attributes from the database and set them on the fetched resource
     for attr_name in db_resource.attributes.keys():

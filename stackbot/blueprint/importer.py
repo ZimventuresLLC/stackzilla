@@ -1,6 +1,5 @@
 """Import modules from disk."""
 from dataclasses import dataclass
-from genericpath import isfile
 import inspect
 import os
 import pkgutil

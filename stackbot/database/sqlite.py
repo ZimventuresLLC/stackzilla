@@ -67,7 +67,13 @@ class StackBotSQLiteDB(StackBotDBBase):
         self._db.execute(f'CREATE TABLE IF NOT EXISTS {StackBotSQLiteDB.MetadataTableName} (key text unique, value text)')
 
         # Create the StackBotResource table
-        self._db.execute('CREATE TABLE StackBotResource(id INTEGER PRIMARY KEY, path TEXT UNIQUE)')
+        self._db.execute("""CREATE TABLE StackBotResource(
+            id INTEGER PRIMARY KEY,
+            path TEXT UNIQUE,
+            version_major INTEGER,
+            version_minor INTEGER,
+            version_build INTEGER,
+            version_name TEXT)""")
 
         # Create the StackBotAttribute table
         create_attribute_sql = """CREATE TABLE StackBotAttribute(
@@ -207,7 +213,20 @@ class StackBotSQLiteDB(StackBotDBBase):
         """
         self._logger.debug(f'INSERT {resource.path()}')
         try:
-            self._db.execute('INSERT INTO StackBotResource (path) VALUES (?)', (resource.path(),))
+            create_sql = """INSERT INTO StackBotResource
+            ("path", "version_major", "version_minor", "version_build", "version_name")
+            VALUES (:path, :version_major, :version_minor, :version_build, :version_name)"""
+
+            version = resource.version()
+            create_params = {
+                'path': resource.path(),
+                'version_major': version.major,
+                'version_minor': version.minor,
+                'version_build': version.build,
+                'version_name': version.name
+            }
+
+            self._db.execute(create_sql, create_params)
             self._db.commit()
         except sqlite3.IntegrityError as exc:
             raise CreateResourceFailure() from exc

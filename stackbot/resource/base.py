@@ -1,5 +1,6 @@
 """Base class for all user defined resources."""
 from abc import abstractmethod
+from dataclasses import dataclass
 import inspect
 from typing import Dict, List
 
@@ -7,9 +8,15 @@ from stackbot.attribute import StackBotAttribute
 from stackbot.database.base import StackBotDB
 from stackbot.database.exceptions import AttributeNotFound
 
+@dataclass
+class ResourceVersion:
+    """Data structure to represent versioning information for a StackBotResource"""
+    major: int
+    minor: int
+    build: int
+    name: str
+
 class StackBotResource:
-
-
     """Base class for all user defined resources."""
 
     def __init__(self) -> None:
@@ -41,6 +48,11 @@ class StackBotResource:
     @abstractmethod
     def verify(self) -> None:
         """Perform verification logic for the resource."""
+
+    @classmethod
+    @abstractmethod
+    def version(cls) -> ResourceVersion:
+        """Fetch the versioning data for the resource. This should be overridden by the provider."""
 
     def get_attribute(self, name) -> StackBotAttribute:
         """Given an attribute name, fetch the StackBotAttribute object
