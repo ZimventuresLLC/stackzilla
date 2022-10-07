@@ -1,25 +1,12 @@
 """Import modules from disk."""
-from dataclasses import dataclass
-import inspect
 import os
 import pkgutil
-import sys
 from importlib import import_module
 from importlib.machinery import ModuleSpec
 from pathlib import Path
-from types import ModuleType
 from typing import List, Optional, Type
 
-from stackbot.importer.base import BaseImporter
-from stackbot.importer.exceptions import ClassNotFound
-from stackbot.logging.core import CoreLogger
-
-@dataclass
-class ModuleInfo:
-    """Data structure to hold information about loaded modules"""
-    path: str
-    data: str
-    module: ModuleType
+from stackbot.importer.base import BaseImporter, ModuleInfo
 
 
 class Importer(BaseImporter):
@@ -65,7 +52,14 @@ class Importer(BaseImporter):
                 self._logger.debug(f'Found package: {name} | {file_path = }')
 
                 package = import_module(name=f'.{name}', package=self.current_python_path)
-                self._packages[package.__name__] = package
+
+                package_name: str = package.__name__
+
+                # If a package root is in use, strip it off before inserting it into the package cache
+                if self._package_root:
+                    package_name = package_name.removeprefix(f'{self._package_root}.')
+
+                self._packages[package_name] = package
                 self.on_package_found(package=package)
 
                 self._current_python_path.append(name)
@@ -76,24 +70,28 @@ class Importer(BaseImporter):
                 # Remove the last item in the python path
                 self._current_python_path.pop()
             else:
-                self._logger.debug(f'Found module: {name} | {file_path = } | {self.current_python_path =}')
+                self._logger.debug(f'import_module(name=.{name}, package={self.current_python_path}) | {file_path = }')
                 module = import_module(
                     name=f'.{name}',
                     package=self.current_python_path
                 )
 
+                module_name = module.__name__
+
+                # If the package root is in use, strip it off of the module path before using it as the cache index
+                if self._package_root:
+                    module_name = module_name.removeprefix(f'{self._package_root}.')
+
+                # Save off the module into the cache
+                module_file_data = None
+                with open(module.__file__, 'r', encoding='utf-8') as module_file:
+                    module_file_data = module_file.read()
+
+                self._modules[module_name] = ModuleInfo(path=module_name, module=module, data=module_file_data)
                 self.on_module_found(module=module)
 
-                # Inform anyone that cares, a class was found.
-                for obj_name, obj in inspect.getmembers(module, inspect.isclass):
-                    if self._class_filter is None or issubclass(obj, self._class_filter):
-
-                        # If the module starts with 'stackbot.provider', ignore it
-                        if obj.__module__.startswith('stackbot.provider'):
-                            continue
-
-                        self._classes[f'{obj.__module__}.{obj.__name__}'] = obj
-                        self.on_class_found(name=obj_name, obj=obj)
+                # Fire off all of the on_class_found() callbacks
+                self._trigger_on_class_found(module=module)
 
     def find_spec(self, name, path, _target=None):
         """Python import hook for checking if the package being imported can be handled."""
@@ -172,15 +170,13 @@ class Importer(BaseImporter):
 
             # This is a module
             module.__package__ = self._current_spec_path
+            module.__file__ = module_file_path
 
             self._logger.debug(f'Execing f{module_file_path} into module {module.__name__}')
             module_file_data = ''
             with open(module_file_path, mode='r', encoding="utf-8") as module_file:
                 module_file_data = module_file.read()
                 exec(module_file_data, module.__dict__) # pylint: disable=exec-used
-
-            # Save off the module
-            self._modules[module.__name__] = ModuleInfo(path=module.__name__, module=module, data=module_file_data)
 
         else:
             err_msg = f'exec_moudle()\n\t{module.__name__ = }\n\t{package_dir_path = }\n\t{module_file_path = }'

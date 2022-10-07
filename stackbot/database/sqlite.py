@@ -9,8 +9,9 @@ from typing import Any, List, Optional
 
 from stackbot.database.base import StackBotDBBase, StackBotDB
 from stackbot.database.exceptions import (
-    AttributeNotFound, BlueprintModuleNotFound, CreateAttributeFailure, CreateBlueprintModuleFailure, CreateResourceFailure, DatabaseExists,
-    DatabaseNotFound, DuplicateAttribute, DuplicateBlueprintModule, MetadataKeyNotFound, ResourceNotFound
+    AttributeNotFound, BlueprintModuleNotFound, BlueprintPackageNotFound, CreateAttributeFailure,
+    CreateBlueprintModuleFailure, CreateBlueprintPackageFaiure, CreateResourceFailure, DatabaseExists,
+    DatabaseNotFound, DuplicateAttribute, DuplicateBlueprintModule, DuplicateBlueprintPackage, MetadataKeyNotFound, ResourceNotFound
 )
 from stackbot.logging.core import CoreLogger
 from stackbot.resource import StackBotResource
@@ -37,7 +38,8 @@ class StackBotSQLiteDB(StackBotDBBase):
         # Adding a special pytest check here for the unit test case. For unit testing there is no caching
         if 'pytest' not in sys.argv[0]:
             assert StackBotDB.db is None
-            StackBotDB.db = self
+
+        StackBotDB.db = self
 
     def create(self, in_memory: bool = False) -> None:
         """Create the database file.
@@ -90,6 +92,12 @@ class StackBotSQLiteDB(StackBotDBBase):
                                          "path" TEXT UNIQUE,
                                          "data" TEXT)"""
         self._db.execute(create_blueprint_module_sql)
+
+        # Create the blueprint package table
+        create_blueprint_package_sql = """CREATE TABLE StackBotBlueprintPackage(
+                                         "ID" INTEGER PRIMARY KEY,
+                                         "path" TEXT UNIQUE)"""
+        self._db.execute(create_blueprint_package_sql)
 
         self._db.commit()
 
@@ -491,10 +499,98 @@ class StackBotSQLiteDB(StackBotDBBase):
         delete_sql = 'DELETE FROM StackBotBlueprintModule WHERE id=:id'
         self._db.execute(delete_sql, {'id': blueprint_module_id})
 
+
     def delete_all_blueprint_modules(self) -> None:
         """Delete all of the blueprints from the database."""
         delete_sql = 'DELETE FROM StackBotBlueprintModule'
         self._db.execute(delete_sql)
+
+    def create_blueprint_package(self, path: str) -> None:
+        """Create a new blueprint package.
+
+        Args:
+            path (str): Full Python path of the package
+        """
+        try:
+            self._get_blueprint_package_id(path=path)
+            raise DuplicateBlueprintPackage
+        except BlueprintPackageNotFound:
+            pass
+
+        sql = """INSERT INTO StackBotBlueprintPackage ("path") VALUES (:path)"""
+        insert_data = {
+            'path': path,
+        }
+
+        try:
+            self._db.execute(sql, insert_data)
+            self._db.commit()
+        except sqlite3.IntegrityError as exc:
+            raise CreateBlueprintPackageFaiure() from exc
+
+    def delete_blueprint_package(self, path: str) -> None:
+        """Delete a blueprint package from the database.
+
+        Args:
+            path (str): Full Python path to the package
+        """
+        blueprint_package_id = self._get_blueprint_package_id(path=path)
+        delete_sql = 'DELETE FROM StackBotBlueprintPackage WHERE id=:id'
+        self._db.execute(delete_sql, {'id': blueprint_package_id})
+
+    def delete_all_blueprint_packages(self) -> None:
+        """Delete all of the blueprint packages from the database."""
+        delete_sql = 'DELETE FROM StackBotBlueprintPackage'
+        self._db.execute(delete_sql)
+
+    def get_blueprint_package(self, path: str) -> bool:
+        """Queries if a blueprint package exists in the database
+
+        Args:
+            path (str): _description_
+
+        Returns:
+            bool: _description_
+        """
+        try:
+            self._get_blueprint_package_id(path=path)
+            return True
+        except BlueprintPackageNotFound:
+            return False
+
+    def get_blueprint_packages(self) -> List[str]:
+        """Fetch a list of all the blueprint packages.
+
+        Returns:
+            List[str]: A list of blueprint package names.
+        """
+        results: List[str] = []
+        select_sql = 'SELECT * FROM StackBotBlueprintPackage'
+        cursor = self._db.execute(select_sql)
+        for row in cursor.fetchall():
+            results.append(row['path'])
+
+        return results
+
+    def _get_blueprint_package_id(self, path: str) -> int:
+        """Fetch the row ID for a given blueprint package, based on the provided path.
+
+        Args:
+            path (str): Full Python path to the blueprint package
+
+        Raises:
+            BlueprintPackageNotFound: Raised if the module is not found
+
+        Returns:
+            int: The row ID for the module
+        """
+        select_sql = 'SELECT * FROM StackBotBlueprintPackage WHERE path=:path'
+        cursor = self._db.execute(select_sql, {'path': path})
+        row = cursor.fetchone()
+        if row is None:
+            raise BlueprintPackageNotFound
+
+        return row['id']
 
     def _get_blueprint_module_id(self, path: str) -> int:
         """Fetch the row ID for a given blueprint module, based on the provided path.

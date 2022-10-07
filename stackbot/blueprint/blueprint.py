@@ -47,6 +47,11 @@ class Blueprint(Importer):
                 obj.create()
                 obj.create_in_db()
 
+        # Dump all of the packages to the database
+        StackBotDB.db.delete_all_blueprint_packages()
+        for package_name in self.packages:
+            StackBotDB.db.create_blueprint_package(path=package_name)
+
         # Dump all of the modules to the databse
         StackBotDB.db.delete_all_blueprint_modules()
         for module in self.modules.values():

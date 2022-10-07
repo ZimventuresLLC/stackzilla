@@ -1,6 +1,7 @@
 """Base importer class."""
 from abc import abstractmethod
 from dataclasses import dataclass
+import inspect
 from types import ModuleType
 from typing import List, Optional, Type
 import sys
@@ -107,6 +108,11 @@ class BaseImporter:
         return self._modules
 
     @property
+    def packages(self) -> dict[str, ModuleInfo]:
+        """Fetch all of the packages that were loaded by the importer."""
+        return self._packages
+
+    @property
     def current_python_path(self):
         """Fetch the current Python path that is being imported.
 
@@ -148,3 +154,16 @@ class BaseImporter:
     @abstractmethod
     def exec_module(self, module):
         """Initialize packages and modules within an end-user blueprint."""
+
+    def _trigger_on_class_found(self, module: ModuleType):
+        """Fire off the on_class_found() callback for all classes found in a module."""
+        # Inform anyone that cares, a class was found.
+        for obj_name, obj in inspect.getmembers(module, inspect.isclass):
+            if self._class_filter is None or issubclass(obj, self._class_filter):
+
+                # If the module starts with 'stackbot.provider', ignore it
+                if obj.__module__.startswith('stackbot.provider'):
+                    continue
+
+                self._classes[f'{obj.__module__}.{obj.__name__}'] = obj
+                self.on_class_found(name=obj_name, obj=obj)

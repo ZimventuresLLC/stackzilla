@@ -5,8 +5,10 @@ from unittest.mock import Mock
 
 import pytest
 
+from stackbot.database.sqlite import StackBotSQLiteDB
 from stackbot.importer.exceptions import ClassNotFound
 from stackbot.importer.importer import Importer
+from stackbot.importer.db_importer import DatabaseImporter
 
 logger = logging.getLogger(__file__)
 
@@ -127,3 +129,38 @@ def test_multiple_package_roots():
 
     for importer in importers:
         importer.unload()
+
+def test_database_importer(database: StackBotSQLiteDB):
+    """Make sure that the database importer works"""
+    test_bp = Path(__file__)
+    fixture_location = test_bp.parent / 'fixtures' / 'multiple_directories'
+
+    importer = Importer(path=str(fixture_location), class_filter=object, package_root='testing')
+    importer.load()
+
+    # Populate the database with module entries
+    database.delete_all_blueprint_packages()
+    for package_name in importer.packages:
+        database.create_blueprint_package(path=package_name)
+
+    # Dump all of the modules to the databse
+    database.delete_all_blueprint_modules()
+    for module in importer.modules.values():
+        database.create_blueprint_module(path=module.path, data=module.data)
+
+    # Import from the database.
+    # Note that we're importing into a different package root!
+    db_importer = DatabaseImporter(class_filter=object, package_root='db_testing')
+    db_importer.load()
+
+    # Make sure that all of the package names for the database are in the original importer
+    for package_name in db_importer.packages:
+        assert package_name in importer.packages
+
+    assert len(db_importer.packages) == len(importer.packages)
+
+    # Make sure thta all of the module names for the database are in the original importer
+    for module_name in db_importer.modules:
+        assert module_name in importer.modules
+
+    assert len(db_importer.modules) == len(importer.modules)

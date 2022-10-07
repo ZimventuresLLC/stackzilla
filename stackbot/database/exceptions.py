@@ -32,3 +32,11 @@ class DuplicateBlueprintModule(Exception):
 
 class CreateBlueprintModuleFailure(Exception):
     """Raised when the blueprint module creation fails."""
+
+class CreateBlueprintPackageFaiure(Exception):
+    """Raised when the blueprint package creation fails."""
+class BlueprintPackageNotFound(Exception):
+    """Raised when the blueprint package is not found during a search operation."""
+
+class DuplicateBlueprintPackage(Exception):
+    """Raised when a package already exists during a create operation."""

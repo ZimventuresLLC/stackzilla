@@ -237,7 +237,44 @@ class StackBotDBBase(ABC):
     @abstractmethod
     def delete_all_blueprint_modules(self) -> None:
         """Delete all of the blueprint modules."""
-        
+
+    @abstractmethod
+    def create_blueprint_package(self, path: str) -> None:
+        """Create a new blueprint package.
+
+        Args:
+            path (str): Full Python path of the package
+        """
+
+    @abstractmethod
+    def delete_blueprint_package(self, path: str) -> None:
+        """Delete a blueprint package from the database.
+
+        Args:
+            path (str): Full Python path to the package
+        """
+
+    @abstractmethod
+    def delete_all_blueprint_packages(self) -> None:
+        """Delete all of the blueprint packages from the database."""
+
+    @abstractmethod
+    def get_blueprint_package(self, path: str) -> bool:
+        """Queries if a blueprint package exists in the database
+
+        Args:
+            path (str): _description_
+
+        Returns:
+            bool: _description_
+        """
+    @abstractmethod
+    def get_blueprint_packages(self) -> List[str]:
+        """Fetch a list of all the blueprint packages.
+
+        Returns:
+            List[str]: A list of blueprint package names.
+        """
 class StackBotDB:
     """Singleton DB object """
     db: StackBotDBBase = None
