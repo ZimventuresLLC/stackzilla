@@ -28,7 +28,7 @@ class MyClass(Class):
 
     def __init__(self) -> None:
         super().__init__()
-
+        self.default_float = 69.0
         self.required_arg = "StackBot"
 
 

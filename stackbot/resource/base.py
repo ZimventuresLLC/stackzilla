@@ -2,7 +2,7 @@
 from abc import abstractmethod
 from dataclasses import dataclass
 import inspect
-from typing import Dict, List
+from typing import Any, Dict, List
 
 from stackbot.attribute import StackBotAttribute
 from stackbot.database.base import StackBotDB
@@ -73,6 +73,20 @@ class StackBotResource:
 
         raise AttributeNotFound
 
+    def get_attribute_value(self, name) -> Any:
+        """Given an attribute name, fetch the value. If there is a default value, and no value exists, return that.
+
+        Args:
+            name (_type_): Name of the attribute to query
+
+        Returns:
+            Any: The value for the attribute.
+
+        Raises:
+            AttributeError: Raised when "name" is not found.
+        """
+        return getattr(self, name)
+
     @property
     def attributes(self) -> Dict[str, StackBotAttribute]:
         """Fetch all of the StackBotAttribute objects defined for the class.
@@ -94,7 +108,7 @@ class StackBotResource:
         return results
 
     def create_in_db(self):
-        """Persist the resource, and its parameters in the database."""
+        """Persist the resource, and its attributes, in the database."""
         StackBotDB.db.create_resource(resource=self)
 
         for name in self.attributes:

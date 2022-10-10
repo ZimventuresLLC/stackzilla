@@ -31,7 +31,7 @@ class Importer(BaseImporter):
 
         if self._package_root != '':
             self._current_python_path.append(f'{self._package_root}')
-        else:
+        else:            
             self._current_python_path.append('.')
 
         self._walk_packages(file_path=self.bp_path)

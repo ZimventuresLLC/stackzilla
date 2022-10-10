@@ -44,6 +44,10 @@ class DatabaseImporter(BaseImporter):
 
             # Do importy things
             module_path_components = module_name.split('.')
+
+            # Filter out any empty strings
+            module_path_components = list(filter(('').__ne__, module_path_components))
+
             if self._package_root:
                 if len(module_path_components) == 1:
                     package_path = f"{self._package_root}"

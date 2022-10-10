@@ -1,8 +1,11 @@
 """Click handlers for the blueprint sub-command."""
 import click
+from io import StringIO
 
-from stackbot.blueprint import Blueprint
+from stackbot.blueprint import StackBotBlueprint
 from stackbot.database.base import StackBotDB
+from stackbot.diff import StackBotDiff, StackBotBlueprintDiff
+from stackbot.diff.diff import StackBotDiffResult
 
 @click.group(name='blueprint')
 def blueprint():
@@ -15,20 +18,32 @@ def apply(path):
     StackBotDB.db.open()
 
     # TODO: Import the blueprint from disk
-    disk_blueprint = Blueprint(path=path)
+    disk_blueprint = StackBotBlueprint(path=path)
     disk_blueprint.load()
-
     disk_blueprint.verify()
 
     # TODO: Import the blueprint from the database
+    db_blueprint = StackBotBlueprint()
+    db_blueprint.load()
+    db_blueprint.verify()
+
     # TODO: Diff the blueprint
-    # TODO: Show the blueprint diff and ask for user confirmation
-    # TODO: Appply the blueprint
-    disk_blueprint.apply()
+    diff = StackBotDiff()
+    diff_result: StackBotBlueprintDiff = diff.diff(source=disk_blueprint, destination=db_blueprint)
+
+    # Show the diff and prompt the user
+    if diff_result.result != StackBotDiffResult.SAME:
+
+        # Print the diff into a temporary buffer, then output it to the console
+        output_buffer = StringIO()
+        diff.print(diff_result, output_buffer)
+        click.echo(output_buffer.getvalue())
+
+        if click.confirm('Apply Changes?'):
+            disk_blueprint.apply()
+    
 
 @blueprint.command('delete')
 def delete():
     """Delete the blueprint"""
     StackBotDB.db.open()
-
-    

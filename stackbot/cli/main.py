@@ -1,10 +1,11 @@
 """Main entrypoint for the application."""
 import click
+from colorama import init as colorama_init
 
 from stackbot.cli.metadata import metadata
 from stackbot.cli.blueprint import blueprint
 from stackbot.cli.options import namespace_option
-from stackbot.database.base import StackBotDBBase, StackBotDB
+from stackbot.database.base import StackBotDB
 from stackbot.database.exceptions import DatabaseExists
 from stackbot.logging.utils import setup_logging
 
@@ -15,6 +16,9 @@ from stackbot.logging.utils import setup_logging
 def cli(ctx, namespace):
     """Main entrypoint to all cli commands."""
     setup_logging()
+
+    # Needs to be called for initialization on Windows platforms
+    colorama_init()
 
     ctx.ensure_object(dict)
 
