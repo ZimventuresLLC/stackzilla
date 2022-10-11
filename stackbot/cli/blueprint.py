@@ -29,19 +29,19 @@ def apply(path):
 
     # TODO: Diff the blueprint
     diff = StackBotDiff()
-    diff_result: StackBotBlueprintDiff = diff.diff(source=disk_blueprint, destination=db_blueprint)
+    diff.diff(source=disk_blueprint, destination=db_blueprint)
 
     # Show the diff and prompt the user
-    if diff_result.result != StackBotDiffResult.SAME:
+    if diff.result.result != StackBotDiffResult.SAME:
 
         # Print the diff into a temporary buffer, then output it to the console
         output_buffer = StringIO()
-        diff.print(diff_result, output_buffer)
+        diff.print(output_buffer)
         click.echo(output_buffer.getvalue())
 
         if click.confirm('Apply Changes?'):
-            disk_blueprint.apply()
-    
+            diff.apply()
+
 
 @blueprint.command('delete')
 def delete():

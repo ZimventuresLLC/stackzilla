@@ -7,6 +7,7 @@ from typing import Any, Dict, List
 from stackbot.attribute import StackBotAttribute
 from stackbot.database.base import StackBotDB
 from stackbot.database.exceptions import AttributeNotFound
+from stackbot.utils.constants import DB_BP_PREFIX
 
 @dataclass
 class ResourceVersion:
@@ -25,7 +26,11 @@ class StackBotResource:
     @classmethod
     def path(cls) -> str:
         """A unique name (within the blueprint) for this resource."""
-        return f'{cls.__module__}.{cls.__name__}'
+        path = f'{cls.__module__}.{cls.__name__}'
+        if path.startswith(DB_BP_PREFIX):
+            path = path.replace(DB_BP_PREFIX, '.')
+            
+        return path
 
     def create(self) -> None:
         """Create a new resource."""
@@ -113,3 +118,13 @@ class StackBotResource:
 
         for name in self.attributes:
             StackBotDB.db.create_attribute(resource=self, name=name, value=getattr(self, name))
+
+    def delete_from_db(self):
+        """Delete the resource, and all its attributes, from the database."""
+
+        for name in self.attributes:
+            StackBotDB.db.delete_attribute(resource=self, name=name)
+
+        # If the path for the resource is rooted with the database prefix, replace it with '.'
+        resource_path = self.path()
+        StackBotDB.db.delete_resource(path=resource_path)

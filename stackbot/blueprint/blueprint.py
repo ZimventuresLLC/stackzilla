@@ -1,13 +1,13 @@
 """Class for interacting with end-user blueprints."""
-from typing import Optional, Type
+from typing import Optional
 
 from stackbot.importer.exceptions import NotLoaded
+from stackbot.importer.base import ModuleInfo
 from stackbot.importer.importer import Importer
 from stackbot.importer.db_importer import DatabaseImporter
-from stackbot.database.base import StackBotDB
 from stackbot.graph import Graph
 from stackbot.resource.base import StackBotResource
-
+from stackbot.utils.constants import DB_BP_PREFIX
 
 class StackBotBlueprint:
     """Manage an end-user blueprint."""
@@ -27,7 +27,7 @@ class StackBotBlueprint:
             self._importer = Importer(path=path, class_filter=StackBotBlueprint.base_resource_type)
         else:
             self._importer = DatabaseImporter(
-                class_filter=StackBotBlueprint.base_resource_type, package_root='sb_db_bp'
+                class_filter=StackBotBlueprint.base_resource_type, package_root=DB_BP_PREFIX
             )
 
     def load(self):
@@ -36,12 +36,30 @@ class StackBotBlueprint:
 
     @property
     def resources(self) -> dict[str, StackBotResource]:
-        """Fetch all of the resources available in the blueprint
+        """Fetch all of the resources available in the blueprint.
 
         Returns:
             dict[str, StackBotResource]: A dictionary of resources. The key is the full Python path to the resource.
         """
         return self._importer.classes
+
+    @property
+    def packages(self) -> dict[str, ModuleInfo]:
+        """Fetch a mapping of all of the packages available in the blueprint.
+
+        Returns:
+            dict[str, ModuleInfo]: A dictionary of ModuleInfo, key'ed by the Python path
+        """
+        return self._importer.packages
+
+    @property
+    def modules(self) -> dict[str, ModuleInfo]:
+        """A mapping of all the modules available in the blueprint.
+
+        Returns:
+            dict[str, ModuleInfo]: ModuleInfo for each module, key'ed by the Python path
+        """
+        return self._importer.modules
 
     def verify(self):
         """Verify all of the blueprint resources."""
@@ -51,34 +69,6 @@ class StackBotBlueprint:
         graph.resolve()
 
         # TODO: Verify all of the attributes
-
-    def apply(self):
-        """Execute the dependency graph for the blueprint."""
-
-        graph: Graph = self._build_graph()
-        phases = graph.resolve()
-
-        for phase in phases:
-
-            # TODO: Make this multi-threaded since none of the resources within a phase will depend on each other
-            for resource in phase:
-
-                obj = resource()
-
-                # TODO: Handle the update/delete case
-                obj.create()
-                obj.create_in_db()
-
-        # Dump all of the packages to the database
-        StackBotDB.db.delete_all_blueprint_packages()
-        for package_name in self._importer.packages:
-            StackBotDB.db.create_blueprint_package(path=package_name)
-
-        # Dump all of the modules to the databse
-        StackBotDB.db.delete_all_blueprint_modules()
-        for module in self._importer.modules.values():
-            StackBotDB.db.create_blueprint_module(path=module.path, data=module.data)
-
 
     def _build_graph(self) -> Graph:
         """Build a dependency graph from all of the classes that were previously imported."""

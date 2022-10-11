@@ -57,8 +57,9 @@ class Importer(BaseImporter):
 
                 # If a package root is in use, strip it off before inserting it into the package cache
                 if self._package_root:
-                    package_name = package_name.removeprefix(f'{self._package_root}.')
-
+                    #package_name = package_name.removeprefix(f'{self._package_root}.')
+                    package_name = package_name.replace(self._package_root, '.')
+                
                 self._packages[package_name] = package
                 self.on_package_found(package=package)
 
@@ -78,9 +79,9 @@ class Importer(BaseImporter):
 
                 module_name = module.__name__
 
-                # If the package root is in use, strip it off of the module path before using it as the cache index
+                # If the package root is in use, replace it with '.' before using it as the cache index
                 if self._package_root:
-                    module_name = module_name.removeprefix(f'{self._package_root}.')
+                    module_name = module_name.replace(self._package_root, '.')
 
                 # Save off the module into the cache
                 module_file_data = None
@@ -125,7 +126,6 @@ class Importer(BaseImporter):
             return None
 
         # Save this to use when setting __package__ during module initialization
-
         self._current_spec_path = path
         return ModuleSpec(name, self)
 
@@ -179,5 +179,5 @@ class Importer(BaseImporter):
                 exec(module_file_data, module.__dict__) # pylint: disable=exec-used
 
         else:
-            err_msg = f'exec_moudle()\n\t{module.__name__ = }\n\t{package_dir_path = }\n\t{module_file_path = }'
+            err_msg = f'exec_module()\n\t{module.__name__ = }\n\t{package_dir_path = }\n\t{module_file_path = }'
             self._logger.critical(err_msg)

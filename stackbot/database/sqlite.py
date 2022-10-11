@@ -250,6 +250,7 @@ class StackBotSQLiteDB(StackBotDBBase):
         """
         resource_id: int = self._resource_id_from_path(path=path)
         self._db.execute('DELETE FROM StackBotResource WHERE id=:resource_id', {'resource_id': resource_id})
+        self._db.commit()
 
     def get_all_resources(self) -> List[StackBotResource]:
         results: List[StackBotResource] = []
@@ -345,6 +346,7 @@ class StackBotSQLiteDB(StackBotDBBase):
 
         delete_sql = 'DELETE FROM StackBotAttribute WHERE id=:attribute_id'
         self._db.execute(delete_sql, {'attribute_id': attribute_id})
+        self._db.commit()
 
     def update_attribute(self, resource: StackBotResource, name: str, value: Any):
         """Update a previously created attribute.
@@ -654,6 +656,6 @@ class StackBotSQLiteDB(StackBotDBBase):
             cursor = self._db.execute('SELECT * FROM StackBotResource WHERE path=:path', {'path': path})
             row = cursor.fetchone()
             if row is None:
-                raise ResourceNotFound()
+                raise ResourceNotFound(path)
 
             return row['id']

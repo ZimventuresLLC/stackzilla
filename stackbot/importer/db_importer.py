@@ -71,8 +71,13 @@ class DatabaseImporter(BaseImporter):
             if self._package_root:
                 module_name = module_name.removeprefix(f'{self._package_root}.')
 
-            module_file_data = StackBotDB.db.get_blueprint_module(module_name)
-            self._modules[module_name] = ModuleInfo(path=module_name, module=module, data=module_file_data)
+            # Prepend '..' for the lookup
+            module_lookup_name = module_name
+            if module_name.startswith('..') is False:
+                module_lookup_name = '..' + module_name
+
+            module_file_data = StackBotDB.db.get_blueprint_module(module_lookup_name)
+            self._modules[module_lookup_name] = ModuleInfo(path=module_lookup_name, module=module, data=module_file_data)
 
             self.on_module_found(module=module)
 
@@ -154,6 +159,9 @@ class DatabaseImporter(BaseImporter):
         else:
             module_file_path = module_name.replace('.', os.path.sep)
 
+        if module_name.startswith('..') is False:
+            module_name = '..' + module_name
+
         # Test what type of resource this is (package or module)
         if module_name in self._bp_packages:
             # This is a package
@@ -177,5 +185,5 @@ class DatabaseImporter(BaseImporter):
             exec(module_file_data, module.__dict__) # pylint: disable=exec-used
 
         else:
-            err_msg = f'exec_moudle()\n\t{module.__name__ = }\n\t{module_file_path = }'
+            err_msg = f'exec_module()\n\t{module.__name__ = }\n\t{module_file_path = }'
             self._logger.critical(err_msg)

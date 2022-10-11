@@ -6,8 +6,12 @@ from io import StringIO
 from typing import Any, Dict, List, Optional, Tuple
 
 from stackbot.blueprint.blueprint import StackBotBlueprint
+from stackbot.database.base import StackBotDB
+from stackbot.diff.exceptions import NoDiffError
+from stackbot.graph import Graph
 from stackbot.resource import StackBotResource
 from stackbot.attribute import StackBotAttribute
+from stackbot.utils.constants import DB_BP_PREFIX
 
 class StackBotDiffResult(Enum):
     """Enum for the available results from diffing either a resource or parameter."""
@@ -71,7 +75,7 @@ class StackBotAttributeDiff:
             buffer (StringIO): Buffer to write to
         """
         if self.result == StackBotDiffResult.NEW:
-            buffer.write(Fore.GREEN + f'++\t{self.name()}: <none> => {self.filtered_src_value()}\n')            
+            buffer.write(Fore.GREEN + f'++\t{self.name()}: <none> => {self.filtered_src_value()}\n')
         elif self.result == StackBotDiffResult.DELETED:
             buffer.write(Fore.RED + f'--\t{self.name()}\n')
         elif self.result == StackBotDiffResult.CONFLICT:
@@ -92,13 +96,20 @@ class StackBotResourceDiff:
 
     def path(self) -> str:
         """Fetch the Python path for the resource."""
+        path: str = ''
         if self.src_resource:
-            return self.src_resource.path()
+            path = self.src_resource.path()
         elif self.dest_resource:
-            return self.dest_resource.path()
+            path = self.dest_resource.path()
         else:
             raise RuntimeError('Unknown Resource')
 
+        # ALWAYS Remove the leading '..' or DB prefix
+        path = path.removeprefix('..')
+        path = path.removeprefix(f'{DB_BP_PREFIX}.')
+
+        return path
+        
     def print(self, buffer: StringIO) -> None:
         """Print the diff results to the buffer."""
         if self.result == StackBotDiffResult.DELETED:
@@ -123,9 +134,67 @@ class StackBotDiff:
     """Compute the differences between two collection of modules."""
 
     def __init__(self) -> None:
-        pass
+        self._result: StackBotBlueprintDiff = None
+        self._src_blueprint: StackBotBlueprint = None
+        self._dest_blueprint: StackBotBlueprint = None
 
-    def diff(self, source: Optional[StackBotBlueprint], destination: Optional[StackBotBlueprint]) -> StackBotBlueprintDiff:
+    @property
+    def result(self) -> StackBotBlueprintDiff:
+        """Fetch the result of the previous diff operation."""
+        if self._result is None:
+            raise NoDiffError
+
+        return self._result
+
+    def apply(self):
+
+        # Create a graph from the source blueprint
+        graph = Graph()
+        for imported_class in self._src_blueprint.resources.values():
+            obj = imported_class()
+            graph.add_node(imported_class, obj.depends_on())
+
+        # Raises CircularDependency if the graph can not be resolved
+        phases = graph.resolve()
+
+        for phase in phases:
+
+            # TODO: Make this multi-threaded since none of the resources within a phase will depend on each other
+            # Get the diffs for each resource in the phase
+            for resource in phase:
+                diff: StackBotResourceDiff = self._result.resource_diffs[resource.path()]
+
+                if diff.result == StackBotDiffResult.CONFLICT:
+                    diff.src_resource.update()
+                elif diff.result == StackBotDiffResult.DELETED:
+                    diff.dest_resource.delete()
+                    diff.dest_resource.delete_from_db()
+                elif diff.result == StackBotDiffResult.NEW:
+                    diff.src_resource.create()
+                    diff.src_resource.create_in_db()
+                elif diff.result == StackBotDiffResult.SAME:
+                    continue
+                else:
+                    raise RuntimeError('Unhandled state')
+
+        # Check the destination blueprint for resources not in the source blueprint (deleted)
+        for resource_name in self._dest_blueprint.resources:
+            if resource_name not in self._src_blueprint.resources:
+                deleted_resource = self._dest_blueprint.resources[resource_name]()
+                deleted_resource.delete()
+                deleted_resource.delete_from_db()
+
+        # Dump all of the packages to the database
+        StackBotDB.db.delete_all_blueprint_packages()
+        for package_name in self._src_blueprint.packages:
+            StackBotDB.db.create_blueprint_package(path=package_name)
+
+        # Dump all of the modules to the databse
+        StackBotDB.db.delete_all_blueprint_modules()
+        for module in self._src_blueprint.modules.values():
+            StackBotDB.db.create_blueprint_module(path=module.path, data=module.data)
+
+    def diff(self, source: Optional[StackBotBlueprint], destination: Optional[StackBotBlueprint]):
         """Diff the source (disk) blueprint against the destination (database) blueprint.
 
         Args:
@@ -135,6 +204,8 @@ class StackBotDiff:
         Returns:
             StackBotBlueprintDiff: The results of the diff operation
         """
+        self._src_blueprint = source
+        self._dest_blueprint = destination
 
         result = StackBotDiffResult.SAME
         diffs: Dict[str, StackBotResourceDiff] = {}
@@ -142,21 +213,34 @@ class StackBotDiff:
         src_resources: Dict[str, StackBotResource] = source.resources
         dest_resources: Dict[str, StackBotResource] = destination.resources
 
+        # The keys for dest_resource are prefixed with the 'sb_db_bp' prefix. Replace it with '.' to match 
+        # the blueprint paths in a non-namespaced blueprint.
+        # ex: sb_db_bp.servers.webserver.MyWebserverVolume => ..servers.webserver.MyWebserverVolume        
+        dest_resource_names_original = list(dest_resources)
+        for resource_name in dest_resource_names_original:
+            new_key_name = resource_name.replace(DB_BP_PREFIX, '.')
+            dest_resources[new_key_name] = dest_resources[resource_name]
+            del dest_resources[resource_name]
+
         # Pass 1 - diff the source against the destination
         for resource_name in src_resources:
-
+            
             # NOTE: We are instantiating the resource object and using that instead of the class object
             src_resource: StackBotResource = src_resources[resource_name]()
 
             # Is the resource available in both the source and destination
             if resource_name in dest_resources:
-                dest_resource: StackBotResource = dest_resources[resource_name]
+                dest_resource: StackBotResource = dest_resources[resource_name]()
 
                 # Diff the resources
-                attr_diff_result, diffs = self.compare(source=src_resource, destination=dest_resource)
+                attr_diff_result, attr_diffs = self.compare(source=src_resource, destination=dest_resource)
 
                 if attr_diff_result == StackBotDiffResult.SAME:
                     # Nothing to do - move along!
+                    diffs[resource_name] = StackBotResourceDiff(src_resource=src_resource,
+                                                                dest_resource=dest_resource,
+                                                                result=StackBotDiffResult.SAME,
+                                                                attribute_diffs=[])
                     continue
 
                 elif attr_diff_result == StackBotDiffResult.CONFLICT or attr_diff_result == StackBotDiffResult.REBUILD_REQUIRED:
@@ -164,7 +248,7 @@ class StackBotDiff:
                     diffs[resource_name] = StackBotResourceDiff(src_resource=src_resource,
                                                                 dest_resource=dest_resource,
                                                                 result=result,
-                                                                attribute_diffs=diffs)
+                                                                attribute_diffs=attr_diffs)
 
                 else:
                     raise RuntimeError('Invalid diff result detected')
@@ -190,7 +274,6 @@ class StackBotDiff:
 
         # Pass 2 - diff the destination against the source, looking for resources that have been deleted
         for resource_name in dest_resources:
-
             # NOTE: We are using an object instance here
             dest_resource: StackBotResource = dest_resources[resource_name]()
 
@@ -216,8 +299,7 @@ class StackBotDiff:
                                                             result=StackBotDiffResult.DELETED,
                                                             attribute_diffs=old_attr_diffs)
 
-        return StackBotBlueprintDiff(resource_diffs=diffs, result=result)
-
+        self._result = StackBotBlueprintDiff(resource_diffs=diffs, result=result)
 
     def compare(self, source: StackBotResource, destination: StackBotResource) -> Tuple[StackBotDiffResult, List[StackBotAttributeDiff]]:
         """Compare two resources and returns the attribute differences between them.
@@ -319,16 +401,18 @@ class StackBotDiff:
 
         return (result, results)
 
-    def print(self, diff: StackBotBlueprintDiff, buffer: StringIO) -> None:
+    def print(self, buffer: StringIO) -> None:
         """Print the results of a diff.
 
         Args:
             diff (StackBotBlueprintDiff): The previously created diff.
             buffer (StringIO): The buffer used for printing.
         """
-        for resource in diff.resource_diffs.values():
+        if self._result is None:
+            raise NoDiffError
+
+        for resource in self._result.resource_diffs.values():
             resource.print(buffer)
 
         # Reset the color style
         buffer.write(Style.RESET_ALL)
-
