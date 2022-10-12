@@ -3,7 +3,7 @@ from colorama import Fore, Style
 from dataclasses import dataclass
 from enum import Enum, auto
 from io import StringIO
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, Optional, Tuple
 
 from stackbot.blueprint.blueprint import StackBotBlueprint
 from stackbot.database.base import StackBotDB
@@ -92,7 +92,7 @@ class StackBotResourceDiff:
     src_resource: Optional[StackBotResource]
     dest_resource: Optional[StackBotResource]
     result: StackBotDiffResult
-    attribute_diffs: List[StackBotAttributeDiff]
+    attribute_diffs: Dict[str, StackBotAttributeDiff]
 
     def path(self) -> str:
         """Fetch the Python path for the resource."""
@@ -109,7 +109,7 @@ class StackBotResourceDiff:
         path = path.removeprefix(f'{DB_BP_PREFIX}.')
 
         return path
-        
+
     def print(self, buffer: StringIO) -> None:
         """Print the diff results to the buffer."""
         if self.result == StackBotDiffResult.DELETED:
@@ -118,8 +118,14 @@ class StackBotResourceDiff:
             buffer.write(Fore.GREEN + f'CREATING [{self.path()}]\n')
         elif self.result == StackBotDiffResult.REBUILD_REQUIRED:
             buffer.write(Fore.YELLOW + 'REBUILD REQUIRED. See attributes marked with "!!"\n')
+        elif self.result == StackBotDiffResult.CONFLICT:
+            buffer.write(Fore.YELLOW + f'UPDATING [{self.path()}]\n')
+        elif self.result == StackBotDiffResult.SAME:
+            return
+        else:
+            raise RuntimeError(f'Unhandled state: {self.result}')
 
-        for attribute in self.attribute_diffs:
+        for attribute in self.attribute_diffs.values():
             attribute.print(buffer)
 
 @dataclass
@@ -240,7 +246,7 @@ class StackBotDiff:
                     diffs[resource_name] = StackBotResourceDiff(src_resource=src_resource,
                                                                 dest_resource=dest_resource,
                                                                 result=StackBotDiffResult.SAME,
-                                                                attribute_diffs=[])
+                                                                attribute_diffs={})
                     continue
 
                 elif attr_diff_result == StackBotDiffResult.CONFLICT or attr_diff_result == StackBotDiffResult.REBUILD_REQUIRED:
@@ -301,7 +307,7 @@ class StackBotDiff:
 
         self._result = StackBotBlueprintDiff(resource_diffs=diffs, result=result)
 
-    def compare(self, source: StackBotResource, destination: StackBotResource) -> Tuple[StackBotDiffResult, List[StackBotAttributeDiff]]:
+    def compare(self, source: StackBotResource, destination: StackBotResource) -> Tuple[StackBotDiffResult, Dict[str, StackBotAttributeDiff]]:
         """Compare two resources and returns the attribute differences between them.
 
         Args:
