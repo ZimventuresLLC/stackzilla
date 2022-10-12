@@ -15,3 +15,8 @@ def lint(c):
 def test(c):
     """Run all of the tests!"""
     c.run(f'pytest {source_root}')
+
+@task
+def serve_docs(c):
+    """Start a server to view and automatically buidl documnetation."""
+    c.run('sphinx-autobuild docs docs/_build/html/')
