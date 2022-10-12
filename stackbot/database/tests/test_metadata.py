@@ -1,8 +1,9 @@
 """Testing for the SQLite database implementation."""
 import pytest
 
-from stackbot.database.sqlite import StackBotSQLiteDB
 from stackbot.database.exceptions import MetadataKeyNotFound
+from stackbot.database.sqlite import StackBotSQLiteDB
+
 
 def test_metadata(database: StackBotSQLiteDB):
     """Validate basic metadata operations"""

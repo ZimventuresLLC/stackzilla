@@ -1,9 +1,11 @@
 """Tests for the sqlite blueprint module database adapter."""
 import pytest
-from stackbot.database.exceptions import BlueprintModuleNotFound, DuplicateBlueprintModule
+
+from stackbot.database.exceptions import (BlueprintModuleNotFound,
+                                          DuplicateBlueprintModule)
 from stackbot.database.sqlite import StackBotSQLiteDB
 
-fake_blueprint_data = """
+FAKE_BLUEPRINT_DATA = """
 from stackbot.provider.test.volume import Volume
 class MyVolume(Volume):
     def __init__(self):
@@ -12,18 +14,18 @@ class MyVolume(Volume):
 
 def test_blueprint_module_create(database: StackBotSQLiteDB):
     """Verify basic module creation."""
-    database.create_blueprint_module(path='storage.website', data=fake_blueprint_data)
+    database.create_blueprint_module(path='storage.website', data=FAKE_BLUEPRINT_DATA)
 
     data = database.get_blueprint_module(path='storage.website')
-    assert data == fake_blueprint_data
+    assert data == FAKE_BLUEPRINT_DATA
 
 def test_duplicate_blueprint_module_create(database: StackBotSQLiteDB):
     """Verify duplicate module creates fail."""
 
-    database.create_blueprint_module(path='storage.website', data=fake_blueprint_data)
+    database.create_blueprint_module(path='storage.website', data=FAKE_BLUEPRINT_DATA)
 
     with pytest.raises(DuplicateBlueprintModule):
-        database.create_blueprint_module(path='storage.website', data=fake_blueprint_data)
+        database.create_blueprint_module(path='storage.website', data=FAKE_BLUEPRINT_DATA)
 
 def test_blueprint_module_invalid_get(database: StackBotSQLiteDB):
     """Make sure the correct exception is raised for a non-existant path."""
@@ -41,7 +43,7 @@ def test_blueprint_module_delete(database: StackBotSQLiteDB):
     """Verify deletion works as expected."""
 
     # Create a blueprint module
-    database.create_blueprint_module(path='storage.website', data=fake_blueprint_data)
+    database.create_blueprint_module(path='storage.website', data=FAKE_BLUEPRINT_DATA)
 
     # Delete the module
     database.delete_blueprint_module(path='storage.website')
@@ -51,7 +53,7 @@ def test_blueprint_module_delete(database: StackBotSQLiteDB):
         database.delete_blueprint_module(path='storage.webserver')
 
 def test_blueprint_module_delete_all(database: StackBotSQLiteDB):
-
+    """Verify that deleting all blueprint modules works."""
     # Should work even though nothing is in there
     database.delete_all_blueprint_modules()
 
@@ -69,10 +71,10 @@ def test_blueprint_module_delete_all(database: StackBotSQLiteDB):
 def test_blueprint_module_update(database: StackBotSQLiteDB):
     """Verify updating module data."""
     # Create a blueprint module
-    database.create_blueprint_module(path='storage.website', data=fake_blueprint_data)
+    database.create_blueprint_module(path='storage.website', data=FAKE_BLUEPRINT_DATA)
 
     data = database.get_blueprint_module(path='storage.website')
-    assert data == fake_blueprint_data
+    assert data == FAKE_BLUEPRINT_DATA
 
     database.update_blueprint_module(path='storage.website', data='123')
     data = database.get_blueprint_module(path='storage.website')
@@ -91,7 +93,7 @@ def test_blueprint_get_modules(database: StackBotSQLiteDB):
 
     # Add all of the modules to the database
     for module in module_names:
-        database.create_blueprint_module(path=module, data=fake_blueprint_data)
+        database.create_blueprint_module(path=module, data=FAKE_BLUEPRINT_DATA)
 
     db_modules = database.get_blueprint_modules()
 

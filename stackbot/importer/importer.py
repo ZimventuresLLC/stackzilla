@@ -31,7 +31,7 @@ class Importer(BaseImporter):
 
         if self._package_root != '':
             self._current_python_path.append(f'{self._package_root}')
-        else:            
+        else:
             self._current_python_path.append('.')
 
         self._walk_packages(file_path=self.bp_path)
@@ -59,7 +59,7 @@ class Importer(BaseImporter):
                 if self._package_root:
                     #package_name = package_name.removeprefix(f'{self._package_root}.')
                     package_name = package_name.replace(self._package_root, '.')
-                
+
                 self._packages[package_name] = package
                 self.on_package_found(package=package)
 
@@ -97,42 +97,42 @@ class Importer(BaseImporter):
     def find_spec(self, name, path, _target=None):
         """Python import hook for checking if the package being imported can be handled."""
         self._logger.debug(f'find_spec({name = }, {path = }, {_target = })')
+        module_spec = None
 
         # Figure out if the {path}.{name} maps to somewhere in the package
-
         if path:
-            pass
-        else:
-            path_on_disk = os.path.join(self.bp_path, f'{name}.py')
-            if os.path.exists(path_on_disk):
-                self._current_spec_path = path
-                return ModuleSpec(f'{self._package_root}.{name}', self)
-            elif name == '.':
-                self._current_spec_path = path
-                return ModuleSpec(name, self)
-            elif name == self._package_root:
-                self._current_spec_path = path
-                return ModuleSpec(name, self)
-            else:
-                self._logger.debug(f'Module ({path_on_disk}) not found')
+            # Ignore StackBot internals and any providers
+            if name.startswith('stackbot.'):
                 return None
 
-        # Ignore StackBot internals and any providers
-        if name.startswith('stackbot.'):
-            return None
+            # We don't know how to handle this module
+            if path is None and name != f'.{self._package_root}':
+                return None
 
-        # We don't know how to handle this module
-        if path is None and name != f'.{self._package_root}':
-            return None
+            # Save this to use when setting __package__ during module initialization
+            self._current_spec_path = path
+            module_spec = ModuleSpec(name, self)
 
-        # Save this to use when setting __package__ during module initialization
-        self._current_spec_path = path
-        return ModuleSpec(name, self)
+        path_on_disk = os.path.join(self.bp_path, f'{name}.py')
+        if os.path.exists(path_on_disk):
+            self._current_spec_path = path
+            module_spec = ModuleSpec(f'{self._package_root}.{name}', self)
+        if name == '.':
+            self._current_spec_path = path
+            module_spec = ModuleSpec(name, self)
+        if name == self._package_root:
+            self._current_spec_path = path
+            module_spec = ModuleSpec(name, self)
+
+        if module_spec is None:
+            self._logger.debug(f'Module ({path_on_disk}) not found')
+
+        return module_spec
 
     def create_module(self, _spec):
         """Create the default Python module by returning None."""
         self._logger.debug(f'create_module({_spec = })')
-        return None
+
 
     def exec_module(self, module):
         """Initialize packages and modules within an end-user blueprint."""

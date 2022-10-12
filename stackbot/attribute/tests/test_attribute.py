@@ -1,4 +1,5 @@
 import inspect
+
 from stackbot.attribute import StackBotAttribute
 
 

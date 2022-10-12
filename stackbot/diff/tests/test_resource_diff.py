@@ -1,12 +1,18 @@
+"""Test for the resource diffing logic."""
+# pylint: disable=abstract-method
+
 from stackbot.attribute import StackBotAttribute
 from stackbot.diff import StackBotDiff, StackBotDiffResult
 from stackbot.resource import StackBotResource
 
+
 class BaseResource(StackBotResource):
+    """Base resource."""
     attr_int = StackBotAttribute(required=True, default=42)
     attr_string = StackBotAttribute(required=True, default="StackBot")
 
 class BaseResoureModified(StackBotResource):
+    """A base resource that will be modified."""
     attr_int = StackBotAttribute(required=True, default=88)
     attr_string = StackBotAttribute(required=True, default="StackBot-New")
 
@@ -16,22 +22,15 @@ class BaseResourceNew(BaseResource):
     attr_new_string = StackBotAttribute(required=True)
 
 class SourceResource(BaseResource):
-    def __init__(self) -> None:
-        super().__init__()
-
+    """The "source" resource which acts like a disk blueprint resource."""
 
 class DestinationResource(BaseResource):
-    def __init__(self) -> None:
-        super().__init__()
-
+    """The "dest" resource which acts like a database blueprint resource."""
 
 class SourceResourceModified(BaseResoureModified):
-    def __init__(self) -> None:
-        super().__init__()
-
+    """A modified disk resource."""
 class SourceResourceNew(BaseResourceNew):
-    def __init__(self) -> None:
-        super().__init__()
+    """A new disk resource."""
 
 def test_resource_diff_same():
     """Ensure that two resources with identical attributes have no differences."""

@@ -1,11 +1,12 @@
 """Abstract base class for all database interfaces."""
-from abc import ABC, abstractmethod
 import typing
+from abc import ABC, abstractmethod
 from typing import Any, List, Optional, Type
 
 if typing.TYPE_CHECKING:
     from stackbot.resource import StackBotResource
 
+# pylint: disable=too-many-public-methods
 class StackBotDBBase(ABC):
     """Interface definition for concrete database implementations."""
 
@@ -115,6 +116,7 @@ class StackBotDBBase(ABC):
         """Adds a new attribute to the database.
 
         Args:
+            resource (StackBotResource): The parent resource for the attribute being created
             name (str): The name of the attribute to create
             value (Any): The value to assign to the newly created attribute
         """
@@ -228,7 +230,7 @@ class StackBotDBBase(ABC):
 
     @abstractmethod
     def delete_blueprint_module(self, path: str) -> None:
-        """Delete an existing module
+        """Delete an existing module.
 
         Args:
             path (str): Full Python path to the module
@@ -260,7 +262,7 @@ class StackBotDBBase(ABC):
 
     @abstractmethod
     def get_blueprint_package(self, path: str) -> bool:
-        """Queries if a blueprint package exists in the database
+        """Queries if a blueprint package exists in the database.
 
         Args:
             path (str): _description_
@@ -275,6 +277,8 @@ class StackBotDBBase(ABC):
         Returns:
             List[str]: A list of blueprint package names.
         """
+# pylint: disable=too-few-public-methods
 class StackBotDB:
-    """Singleton DB object """
+    """Globally accessable singleton database object."""
+
     db: StackBotDBBase = None

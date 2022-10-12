@@ -1,22 +1,24 @@
 """Base importer class."""
+import inspect
+import sys
 from abc import abstractmethod
 from dataclasses import dataclass
-import inspect
 from types import ModuleType
 from typing import List, Optional, Type
-import sys
 
 from stackbot.importer.exceptions import ClassNotFound
 from stackbot.logging.core import CoreLogger
 
+
 @dataclass
 class ModuleInfo:
-    """Data structure to hold information about loaded modules"""
+    """Data structure to hold information about loaded modules."""
+
     path: str
     data: str
     module: ModuleType
 
-
+# pylint: disable=too-many-instance-attributes
 class BaseImporter:
     """Interface definition for concrete importer classes."""
 
@@ -88,6 +90,10 @@ class BaseImporter:
 
         self._loaded = False
 
+    def create_module(self, _spec):
+        """Create the default Python module by returning None."""
+        self._logger.debug(f'create_module({_spec = })')
+
     @abstractmethod
     def load(self):
         """Import the blueprint."""
@@ -146,10 +152,6 @@ class BaseImporter:
     @abstractmethod
     def find_spec(self, name, path, _target=None):
         """Python import hook for checking if the package being imported can be handled."""
-
-    @abstractmethod
-    def create_module(self, _spec):
-        """Python import hook for creating a new module that is handled by this spec."""
 
     @abstractmethod
     def exec_module(self, module):

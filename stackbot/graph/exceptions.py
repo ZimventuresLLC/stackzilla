@@ -1,5 +1,9 @@
 """Exceptions for the graph module."""
+import typing
 from typing import List
+
+if typing.TYPE_CHECKING:
+    from stackbot.graph.graph import Node
 
 
 class CircularDependency(Exception):

@@ -15,7 +15,7 @@ class Node:
 
     def has_dependencies(self):
         """Test if the node has any dependencies."""
-        return True if len(self.dependencies) else False
+        return bool(self.dependencies)
 
 class Graph:
     """Implements a graph resolver for class dependencies."""

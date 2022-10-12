@@ -1,5 +1,5 @@
 """Import modules from disk."""
-import os
+# pylint: disable=R0801
 from importlib import import_module
 from importlib.machinery import ModuleSpec
 from typing import List, Optional, Type
@@ -18,7 +18,6 @@ class DatabaseImporter(BaseImporter):
             class_filter (Type[object], optional): Only import classes inerhiting from this class. Defaults to None.
             package_root (Optional[str]): Sandbox the imported modules into a package root defined by this name. defaults to ''
         """
-
         # List of modules that are available from the database.
         # Used as a cache for checking in find_spec()
         self._bp_modules: List[str] = []
@@ -94,45 +93,42 @@ class DatabaseImporter(BaseImporter):
         """Python import hook for checking if the package being imported can be handled."""
         self._logger.debug(f'find_spec({name = }, {path = }, {_target = })')
 
+        module_spec = None
+
         # Figure out if the {path}.{name} maps to somewhere in the package
-
         if path:
-            pass
-        else:
-
-            # Check if this is a package that is being imported
-            if name in self._bp_packages:
-                self._logger.debug(f'Package ({name}) found')
-                self._current_spec_path = path
-                return ModuleSpec(f'{self._package_root}.{name}', self)
-            elif name == '.':
-                self._logger.debug('Package (.) not found')
-                self._current_spec_path = path
-                return ModuleSpec(name, self)
-            elif name == self._package_root:
-                self._logger.debug(f'Package ({name}) not found')
-                self._current_spec_path = path
-                return ModuleSpec(name, self)
-            else:
-                self._logger.debug(f'Module ({name}) not found')
+             # Ignore StackBot internals and any providers
+            if name.startswith('stackbot.'):
                 return None
 
-        # Ignore StackBot internals and any providers
-        if name.startswith('stackbot.'):
-            return None
+            # We don't know how to handle this module
+            if path is None and name != f'.{self._package_root}':
+                return None
 
-        # We don't know how to handle this module
-        if path is None and name != f'.{self._package_root}':
-            return None
+            # Save this to use when setting __package__ during module initialization
+            self._current_spec_path = path
+            module_spec = ModuleSpec(name, self)
 
-        # Save this to use when setting __package__ during module initialization
-        self._current_spec_path = path
-        return ModuleSpec(name, self)
+        # Check if this is a package that is being imported
+        if name in self._bp_packages:
+            self._logger.debug(f'Package ({name}) found')
+            self._current_spec_path = path
+            module_spec = ModuleSpec(f'{self._package_root}.{name}', self)
 
-    def create_module(self, _spec):
-        """Create the default Python module by returning None."""
-        self._logger.debug(f'create_module({_spec = })')
-        return None
+        if name == '.':
+            self._logger.debug('Package (.) not found')
+            self._current_spec_path = path
+            module_spec = ModuleSpec(name, self)
+
+        if name == self._package_root:
+            self._logger.debug(f'Package ({name}) not found')
+            self._current_spec_path = path
+            module_spec = ModuleSpec(name, self)
+
+        if module_spec is None:
+            self._logger.debug(f'Module ({name}) not found')
+
+        return module_spec
 
     def exec_module(self, module):
         """Initialize packages and modules within an end-user blueprint."""
@@ -147,17 +143,6 @@ class DatabaseImporter(BaseImporter):
         if self._package_root != '':
             if module_name.startswith(f'{self._package_root}.'):
                 module_name = module_name.split(f'{self._package_root}.')[1]
-
-        # Strip out the leading namespace, plus any path separators
-        # Convert the module python path to a file system path (a.a.a -> a/a/a)
-        if module_name.startswith('..'):
-            # This is a top level subpackage
-            module_file_path = module_name[2:].replace('.', os.path.sep)
-        elif module_name.startswith('.'):
-            # This is a top level module
-            module_file_path = module_name[1:].replace('.', os.path.sep)
-        else:
-            module_file_path = module_name.replace('.', os.path.sep)
 
         if module_name.startswith('..') is False:
             module_name = '..' + module_name
@@ -180,10 +165,10 @@ class DatabaseImporter(BaseImporter):
             # This is a module
             module.__package__ = self._current_spec_path
 
-            self._logger.debug(f'Execing {module_file_path} into module {module.__name__}')
+            self._logger.debug(f'Execing {module_name} into module {module.__name__}')
             module_file_data = StackBotDB.db.get_blueprint_module(path=module_name)
             exec(module_file_data, module.__dict__) # pylint: disable=exec-used
 
         else:
-            err_msg = f'exec_module()\n\t{module.__name__ = }\n\t{module_file_path = }'
+            err_msg = f'exec_module()\n\t{module.__name__ = }\n\t{module_name = }'
             self._logger.critical(err_msg)

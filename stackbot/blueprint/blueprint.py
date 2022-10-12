@@ -1,13 +1,14 @@
 """Class for interacting with end-user blueprints."""
 from typing import Optional
 
-from stackbot.importer.exceptions import NotLoaded
-from stackbot.importer.base import ModuleInfo
-from stackbot.importer.importer import Importer
-from stackbot.importer.db_importer import DatabaseImporter
 from stackbot.graph import Graph
+from stackbot.importer.base import ModuleInfo
+from stackbot.importer.db_importer import DatabaseImporter
+from stackbot.importer.exceptions import NotLoaded
+from stackbot.importer.importer import Importer
 from stackbot.resource.base import StackBotResource
 from stackbot.utils.constants import DB_BP_PREFIX
+
 
 class StackBotBlueprint:
     """Manage an end-user blueprint."""
@@ -63,7 +64,6 @@ class StackBotBlueprint:
 
     def verify(self):
         """Verify all of the blueprint resources."""
-
         graph = self._build_graph()
         # Will raise CircularDependency if the graph can not be resolved
         graph.resolve()

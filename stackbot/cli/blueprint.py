@@ -1,11 +1,13 @@
 """Click handlers for the blueprint sub-command."""
-import click
 from io import StringIO
+
+import click
 
 from stackbot.blueprint import StackBotBlueprint
 from stackbot.database.base import StackBotDB
-from stackbot.diff import StackBotDiff, StackBotBlueprintDiff
+from stackbot.diff import StackBotDiff
 from stackbot.diff.diff import StackBotDiffResult
+
 
 @click.group(name='blueprint')
 def blueprint():
@@ -45,5 +47,5 @@ def apply(path):
 
 @blueprint.command('delete')
 def delete():
-    """Delete the blueprint"""
+    """Delete the blueprint."""
     StackBotDB.db.open()

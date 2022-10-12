@@ -2,8 +2,8 @@
 import click
 from colorama import init as colorama_init
 
-from stackbot.cli.metadata import metadata
 from stackbot.cli.blueprint import blueprint
+from stackbot.cli.metadata import metadata
 from stackbot.cli.options import namespace_option
 from stackbot.database.base import StackBotDB
 from stackbot.database.exceptions import DatabaseExists
@@ -29,7 +29,6 @@ def cli(ctx, namespace):
 @cli.command(name='init')
 def init():
     """Initialize a new namespace."""
-
     try:
         StackBotDB.db.create()
     except DatabaseExists as exc:
@@ -39,7 +38,6 @@ def init():
 @cli.command(name='delete')
 def delete():
     """Delete an existing namespace."""
-
     StackBotDB.db.delete()
 
 

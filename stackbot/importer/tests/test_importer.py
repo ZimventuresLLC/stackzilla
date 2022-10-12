@@ -6,9 +6,9 @@ from unittest.mock import Mock
 import pytest
 
 from stackbot.database.sqlite import StackBotSQLiteDB
+from stackbot.importer.db_importer import DatabaseImporter
 from stackbot.importer.exceptions import ClassNotFound
 from stackbot.importer.importer import Importer
-from stackbot.importer.db_importer import DatabaseImporter
 
 logger = logging.getLogger(__file__)
 

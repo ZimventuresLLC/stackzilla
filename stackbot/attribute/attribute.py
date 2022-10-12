@@ -7,6 +7,7 @@ from typing import Any, List
 class StackBotAttribute:
     """Descriptor class for all blueprint attributes."""
 
+    # pylint: disable=too-many-arguments
     def __init__(self, required: bool = False, default: Any = None, choices: List[Any] = None,
                  modify_rebuild: bool = False, dynamic: bool = False, secret: bool = False):
         """Constructor for the attribute.
@@ -28,7 +29,7 @@ class StackBotAttribute:
 
     def __set_name__(self, owner, name):
         """Called by Python to let the descriptor class know the parameter name holding this class."""
-        self.name = name
+        self.name = name # pylint: disable=attribute-defined-outside-init
 
     def __set__(self, instance, value):
         """Called by Python to set the value of the parameter."""

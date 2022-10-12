@@ -1,9 +1,13 @@
 """Verify the SQLite facility for resources."""
+# pylint: disable=abstract-method
 import pytest
-from stackbot.database.exceptions import AttributeNotFound, DuplicateAttribute, ResourceNotFound
+
+from stackbot.attribute import StackBotAttribute
+from stackbot.database.exceptions import (AttributeNotFound,
+                                          DuplicateAttribute, ResourceNotFound)
 from stackbot.database.sqlite import StackBotSQLiteDB
 from stackbot.resource.base import ResourceVersion, StackBotResource
-from stackbot.attribute import StackBotAttribute
+
 
 class Resource(StackBotResource):
     """Demo resource."""
@@ -23,12 +27,14 @@ class OtherResource(StackBotResource):
         return ResourceVersion(major=1, minor=0, build=0, name='FCS')
 
 class MyResource(Resource):
+    """Override the default int."""
     def __init__(self) -> None:
         super().__init__()
         self.required = "StackBot"
         self.default_int = 88
 
 class MyOtherResource(Resource):
+    """Override the default required string"""
     def __init__(self) -> None:
         super().__init__()
         self.required = "Second StackBot"

@@ -1,6 +1,8 @@
 """Tests for the sqlite blueprint package database adapter."""
 import pytest
-from stackbot.database.exceptions import BlueprintPackageNotFound, DuplicateBlueprintPackage
+
+from stackbot.database.exceptions import (BlueprintPackageNotFound,
+                                          DuplicateBlueprintPackage)
 from stackbot.database.sqlite import StackBotSQLiteDB
 
 
@@ -21,8 +23,7 @@ def test_duplicate_blueprint_package_create(database: StackBotSQLiteDB):
 def test_blueprint_package_invalid_get(database: StackBotSQLiteDB):
     """Make sure the correct exception is raised for a non-existant path."""
 
-
-    assert database.get_blueprint_package(path='storage.website') == False
+    assert database.get_blueprint_package(path='storage.website') is False
 
     with pytest.raises(BlueprintPackageNotFound):
         database.delete_blueprint_package(path='storage.webserver')
@@ -41,7 +42,7 @@ def test_blueprint_package_delete(database: StackBotSQLiteDB):
         database.delete_blueprint_package(path='storage.webserver')
 
 def test_blueprint_package_delete_all(database: StackBotSQLiteDB):
-
+    """Verify that deleting all packages works."""
     # Should work even though nothing is in there
     database.delete_all_blueprint_packages()
 

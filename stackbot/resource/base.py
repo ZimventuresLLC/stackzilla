@@ -1,7 +1,7 @@
 """Base class for all user defined resources."""
+import inspect
 from abc import abstractmethod
 from dataclasses import dataclass
-import inspect
 from typing import Any, Dict, List
 
 from stackbot.attribute import StackBotAttribute
@@ -9,9 +9,11 @@ from stackbot.database.base import StackBotDB
 from stackbot.database.exceptions import AttributeNotFound
 from stackbot.utils.constants import DB_BP_PREFIX
 
+
 @dataclass
 class ResourceVersion:
-    """Data structure to represent versioning information for a StackBotResource"""
+    """Data structure to represent versioning information for a StackBotResource."""
+
     major: int
     minor: int
     build: int
@@ -29,7 +31,7 @@ class StackBotResource:
         path = f'{cls.__module__}.{cls.__name__}'
         if path.startswith(DB_BP_PREFIX):
             path = path.replace(DB_BP_PREFIX, '.')
-            
+
         return path
 
     def create(self) -> None:
@@ -60,7 +62,7 @@ class StackBotResource:
         """Fetch the versioning data for the resource. This should be overridden by the provider."""
 
     def get_attribute(self, name) -> StackBotAttribute:
-        """Given an attribute name, fetch the StackBotAttribute object
+        """Given an attribute name, fetch the StackBotAttribute object.
 
         Args:
             name (_type_): Attribute name within the resource class definition
@@ -121,7 +123,6 @@ class StackBotResource:
 
     def delete_from_db(self):
         """Delete the resource, and all its attributes, from the database."""
-
         for name in self.attributes:
             StackBotDB.db.delete_attribute(resource=self, name=name)
 

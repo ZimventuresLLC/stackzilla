@@ -1,30 +1,35 @@
 """Module that has all of the logic for diffing imported blueprints."""
-from colorama import Fore, Style
 from dataclasses import dataclass
 from enum import Enum, auto
 from io import StringIO
 from typing import Any, Dict, Optional, Tuple
 
+from colorama import Fore, Style
+
+from stackbot.attribute import StackBotAttribute
 from stackbot.blueprint.blueprint import StackBotBlueprint
 from stackbot.database.base import StackBotDB
 from stackbot.diff.exceptions import NoDiffError
 from stackbot.graph import Graph
 from stackbot.resource import StackBotResource
-from stackbot.attribute import StackBotAttribute
 from stackbot.utils.constants import DB_BP_PREFIX
+
 
 class StackBotDiffResult(Enum):
     """Enum for the available results from diffing either a resource or parameter."""
+
     CONFLICT = auto()
     DELETED = auto()
     NEW = auto()
-    REBUILD_REQUIRED = auto()   # This is a superset of CONFLICT, indicating that an attribute difference requies the resource to be destroyed and recreated.
+    # This is a superset of CONFLICT, indicating that an attribute difference requies the resource to be destroyed and recreated.
+    REBUILD_REQUIRED = auto()
     SAME = auto()
 
 
 @dataclass
 class StackBotAttributeDiff:
     """Results for the diff operation on a single attribute."""
+
     src_value: Optional[Any]
     dest_value: Optional[Any]
     src_attribute: Optional[StackBotAttribute]
@@ -35,37 +40,41 @@ class StackBotAttributeDiff:
         """Fetch the source value, filtering for secrets or dynamic values."""
         if self.src_attribute.secret:
             return '<secret>'
-        elif self.src_attribute.dynamic:
+
+        if self.src_attribute.dynamic:
             return '<TBD>'
-        else:
-            return self.src_value
+
+        return self.src_value
 
     def filtered_dest_value(self) -> Any:
         """Fetch the destination value, filtering for secrets or dynamic values."""
         if self.dest_attribute.secret:
             return '<secret>'
-        elif self.dest_attribute.dynamic:
+
+        if self.dest_attribute.dynamic:
             return '<TBD>'
-        else:
-            return self.dest_value
+
+        return self.dest_value
 
     def is_secret(self) -> bool:
         """Query if the attribute is a secret."""
         if self.src_attribute:
             return self.src_attribute.secret
-        elif self.dest_attribute:
+
+        if self.dest_attribute:
             return self.dest_attribute.secret
-        else:
-            raise RuntimeError('Unkonwn attribute')
+
+        raise RuntimeError('Unkonwn attribute')
 
     def name(self) -> str:
-        """Fetch the name of the attribute"""
+        """Fetch the name of the attribute."""
         if self.src_attribute:
             return self.src_attribute.name
-        elif self.dest_attribute:
+
+        if self.dest_attribute:
             return self.dest_attribute.name
-        else:
-            raise RuntimeError('Unkonwn attribute')
+
+        raise RuntimeError('Unkonwn attribute')
 
 
     def print(self, buffer: StringIO) -> None:
@@ -83,12 +92,13 @@ class StackBotAttributeDiff:
                 buffer.write(Fore.YELLOW + f'!!\t{self.name()}: {self.dest_value} => {self.src_value}\n')
             else:
                 buffer.write(Fore.YELLOW + f'@@\t{self.name()}: {self.dest_value} => {self.src_value}\n')
-        else:
-            buffer.write(Fore.WHITE + f'  \t{self.name()}: {self.dest_value} => {self.src_value}\n')
+
+        buffer.write(Fore.WHITE + f'  \t{self.name()}: {self.dest_value} => {self.src_value}\n')
 
 @dataclass
 class StackBotResourceDiff:
     """Data structure to hold the results of a resource to resource diff."""
+
     src_resource: Optional[StackBotResource]
     dest_resource: Optional[StackBotResource]
     result: StackBotDiffResult
@@ -131,6 +141,7 @@ class StackBotResourceDiff:
 @dataclass
 class StackBotBlueprintDiff:
     """The top-most level of diff."""
+
     resource_diffs: Dict[str, StackBotResourceDiff]
 
     # Valid values are SAME or CONFLICT
@@ -140,6 +151,7 @@ class StackBotDiff:
     """Compute the differences between two collection of modules."""
 
     def __init__(self) -> None:
+        """Default constructor."""
         self._result: StackBotBlueprintDiff = None
         self._src_blueprint: StackBotBlueprint = None
         self._dest_blueprint: StackBotBlueprint = None
@@ -153,7 +165,7 @@ class StackBotDiff:
         return self._result
 
     def apply(self):
-
+        """Resolve the blueprint graph and apply differences."""
         # Create a graph from the source blueprint
         graph = Graph()
         for imported_class in self._src_blueprint.resources.values():
@@ -200,6 +212,7 @@ class StackBotDiff:
         for module in self._src_blueprint.modules.values():
             StackBotDB.db.create_blueprint_module(path=module.path, data=module.data)
 
+    # pylint: disable=too-many-branches,too-many-locals
     def diff(self, source: Optional[StackBotBlueprint], destination: Optional[StackBotBlueprint]):
         """Diff the source (disk) blueprint against the destination (database) blueprint.
 
@@ -219,9 +232,9 @@ class StackBotDiff:
         src_resources: Dict[str, StackBotResource] = source.resources
         dest_resources: Dict[str, StackBotResource] = destination.resources
 
-        # The keys for dest_resource are prefixed with the 'sb_db_bp' prefix. Replace it with '.' to match 
+        # The keys for dest_resource are prefixed with the 'sb_db_bp' prefix. Replace it with '.' to match
         # the blueprint paths in a non-namespaced blueprint.
-        # ex: sb_db_bp.servers.webserver.MyWebserverVolume => ..servers.webserver.MyWebserverVolume        
+        # ex: sb_db_bp.servers.webserver.MyWebserverVolume => ..servers.webserver.MyWebserverVolume
         dest_resource_names_original = list(dest_resources)
         for resource_name in dest_resource_names_original:
             new_key_name = resource_name.replace(DB_BP_PREFIX, '.')
@@ -230,7 +243,7 @@ class StackBotDiff:
 
         # Pass 1 - diff the source against the destination
         for resource_name in src_resources:
-            
+
             # NOTE: We are instantiating the resource object and using that instead of the class object
             src_resource: StackBotResource = src_resources[resource_name]()
 
@@ -249,7 +262,7 @@ class StackBotDiff:
                                                                 attribute_diffs={})
                     continue
 
-                elif attr_diff_result == StackBotDiffResult.CONFLICT or attr_diff_result == StackBotDiffResult.REBUILD_REQUIRED:
+                if attr_diff_result in [StackBotDiffResult.CONFLICT, StackBotDiffResult.REBUILD_REQUIRED]:
                     result = StackBotDiffResult.CONFLICT
                     diffs[resource_name] = StackBotResourceDiff(src_resource=src_resource,
                                                                 dest_resource=dest_resource,
@@ -263,14 +276,14 @@ class StackBotDiff:
                 result = StackBotDiffResult.CONFLICT
 
                 # All of the attributes are new, create "diff" objects for them.
-                new_attr_diffs = []
+                new_attr_diffs = {}
                 src_attributes = src_resource.attributes
                 for attr_name in src_attributes:
-                    new_attr_diffs.append(StackBotAttributeDiff(src_attribute=src_attributes[attr_name],
-                                                                dest_attribute=None,
-                                                                result=StackBotDiffResult.NEW,
-                                                                src_value=src_resource.get_attribute_value(attr_name),
-                                                                dest_value=None))
+                    new_attr_diffs[attr_name] = StackBotAttributeDiff(src_attribute=src_attributes[attr_name],
+                                                                      dest_attribute=None,
+                                                                      result=StackBotDiffResult.NEW,
+                                                                      src_value=src_resource.get_attribute_value(attr_name),
+                                                                      dest_value=None)
 
                 # This is a new resource
                 diffs[resource_name] = StackBotResourceDiff(src_resource=src_resource,
@@ -286,28 +299,30 @@ class StackBotDiff:
             # No need to diff this again
             if resource_name in diffs:
                 continue
-            else:
-                result = StackBotDiffResult.CONFLICT
 
-                # All of the attributes are new, create "diff" objects for them.
-                old_attr_diffs = []
-                dest_attributes = dest_resource.attributes
-                for attr_name in dest_attributes:
-                    old_attr_diffs.append(StackBotAttributeDiff(src_attribute=None,
-                                                                dest_attribute=dest_attributes[attr_name],
-                                                                result=StackBotDiffResult.DELETED,
-                                                                src_value=None,
-                                                                dest_value=dest_resource.get_attribute_value(attr_name)))
+            result = StackBotDiffResult.CONFLICT
 
-                # The resource has been deleted
-                diffs[resource_name] = StackBotResourceDiff(src_resource=None,
-                                                            dest_resource=dest_resource,
-                                                            result=StackBotDiffResult.DELETED,
-                                                            attribute_diffs=old_attr_diffs)
+            # All of the attributes are new, create "diff" objects for them.
+            old_attr_diffs = {}
+            dest_attributes = dest_resource.attributes
+            for attr_name in dest_attributes:
+                old_attr_diffs[attr_name] = StackBotAttributeDiff(src_attribute=None,
+                                                                  dest_attribute=dest_attributes[attr_name],
+                                                                  result=StackBotDiffResult.DELETED,
+                                                                  src_value=None,
+                                                                  dest_value=dest_resource.get_attribute_value(attr_name))
+
+            # The resource has been deleted
+            diffs[resource_name] = StackBotResourceDiff(src_resource=None,
+                                                        dest_resource=dest_resource,
+                                                        result=StackBotDiffResult.DELETED,
+                                                        attribute_diffs=old_attr_diffs)
 
         self._result = StackBotBlueprintDiff(resource_diffs=diffs, result=result)
 
-    def compare(self, source: StackBotResource, destination: StackBotResource) -> Tuple[StackBotDiffResult, Dict[str, StackBotAttributeDiff]]:
+    def compare(self,
+                source: StackBotResource,
+                destination: StackBotResource) -> Tuple[StackBotDiffResult, Dict[str, StackBotAttributeDiff]]:
         """Compare two resources and returns the attribute differences between them.
 
         Args:
@@ -315,9 +330,9 @@ class StackBotDiff:
             destination (StackBotResource): The destination resource
 
         Returns:
-            Tuple[StackBodiff_resulttDiffResult, List[StackBotAttributeDiff]]: The top level diff result for the resources, and a list of attribute differences between the resources.
+            Tuple[StackBodiff_resulttDiffResult, List[StackBotAttributeDiff]]:
+                The top level diff result for the resources, and a list of attribute differences between the resources.
         """
-
         # TODO: Ensure the resource versions are compatible
         result = StackBotDiffResult.SAME
 

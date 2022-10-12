@@ -3,20 +3,29 @@ import importlib
 import json
 import os
 import sqlite3
-from sqlite3 import Connection, Cursor
 import sys
+from sqlite3 import Connection, Cursor
 from typing import Any, List, Optional
 
-from stackbot.database.base import StackBotDBBase, StackBotDB
-from stackbot.database.exceptions import (
-    AttributeNotFound, BlueprintModuleNotFound, BlueprintPackageNotFound, CreateAttributeFailure,
-    CreateBlueprintModuleFailure, CreateBlueprintPackageFaiure, CreateResourceFailure, DatabaseExists,
-    DatabaseNotFound, DuplicateAttribute, DuplicateBlueprintModule, DuplicateBlueprintPackage, MetadataKeyNotFound, ResourceNotFound
-)
+from stackbot.database.base import StackBotDB, StackBotDBBase
+from stackbot.database.exceptions import (AttributeNotFound,
+                                          BlueprintModuleNotFound,
+                                          BlueprintPackageNotFound,
+                                          CreateAttributeFailure,
+                                          CreateBlueprintModuleFailure,
+                                          CreateBlueprintPackageFaiure,
+                                          CreateResourceFailure,
+                                          DatabaseExists, DatabaseNotFound,
+                                          DuplicateAttribute,
+                                          DuplicateBlueprintModule,
+                                          DuplicateBlueprintPackage,
+                                          MetadataKeyNotFound,
+                                          ResourceNotFound)
 from stackbot.logging.core import CoreLogger
 from stackbot.resource import StackBotResource
 
 
+# pylint: disable=too-many-public-methods
 class StackBotSQLiteDB(StackBotDBBase):
     """Concrete implementation of SQLite."""
 
@@ -50,7 +59,6 @@ class StackBotSQLiteDB(StackBotDBBase):
         Raises:
             DatabaseExists: Raised if the file already exists.
         """
-
         if in_memory:
             self._db = sqlite3.connect('file::memory:?cache=shared')
         else:
@@ -176,7 +184,6 @@ class StackBotSQLiteDB(StackBotDBBase):
             key (str): The unique key to set the value for.
             value (Any): The data to associate with the key.
         """
-
         json_value = json.dumps(value)
         self._logger.debug(f'Setting metadata on {key = }')
         self._cursor.execute(f'REPLACE INTO {StackBotSQLiteDB.MetadataTableName} (key, value) VALUES (?,?)', (key, json_value))
@@ -253,6 +260,11 @@ class StackBotSQLiteDB(StackBotDBBase):
         self._db.commit()
 
     def get_all_resources(self) -> List[StackBotResource]:
+        """Fetch all of the resources available in the databae.
+
+        Returns:
+            List[StackBotResource]: A list of StackBotResource objects
+        """
         results: List[StackBotResource] = []
 
         cursor = self._db.execute('SELECT * FROM StackBotResource')
@@ -264,7 +276,7 @@ class StackBotSQLiteDB(StackBotDBBase):
         return results
 
     def get_resource(self, path: str) -> StackBotResource:
-        """Fetch a resource from the database
+        """Fetch a resource from the database.
 
         Args:
             path (str): The full python path to the resource within the blueprint
@@ -275,7 +287,8 @@ class StackBotSQLiteDB(StackBotDBBase):
         Raises:
             ResourceNotFound: If the specified path does not exist
         """
-        resource_id = self._resource_id_from_path(path=path)
+        # Verify that the resource is availbale (ResourceNotFound will be raised if it isn't)
+        self._resource_id_from_path(path=path)
 
         # Break apart the path into the module and class components
         # example "a.b.c.MyClass" where "a.b.c" is the module and "MyClass" is the class naame
@@ -289,17 +302,20 @@ class StackBotSQLiteDB(StackBotDBBase):
         # TODO: Populate the class with the parameters
         return class_()
 
-
-        # cursor = self._db.execute('SELECT * FROM StackBotDBParameter WHERE resource_id=:resource_id', {'resource_id': resource_id})
-
     def update_resource(self, resource: StackBotResource) -> None:
+        """Called to update a resource in the database.
+
+        Args:
+            resource (StackBotResource): The resource to update in the database
+        """
+        # TODO: Implement this
         raise NotImplementedError
-        return super().update_resource(resource)
 
     def create_attribute(self, resource: StackBotResource, name: str, value: Any):
         """Adds a new attribute to the database.
 
         Args:
+        resource (StackBotResource): The parent resource of the attribute to be created
             name (str): The name of the attribute to set the value for
             value (Any): The value to assign to the attribute
         """
@@ -341,7 +357,6 @@ class StackBotSQLiteDB(StackBotDBBase):
         Raises:
             AttributeNotFound: Raised if the attribute is not found in the database
         """
-
         attribute_id = self._get_attribute_id(resource=resource, name=name)
 
         delete_sql = 'DELETE FROM StackBotAttribute WHERE id=:attribute_id'
@@ -439,7 +454,6 @@ class StackBotSQLiteDB(StackBotDBBase):
         Raises:
             BlueprintModuleNotFound: Raised when the path does not exist.
         """
-
         select_sql = 'SELECT * FROM StackBotBlueprintModule WHERE path=:path'
         cursor = self._db.execute(select_sql, {'path': path})
         row = cursor.fetchone()
@@ -454,7 +468,6 @@ class StackBotSQLiteDB(StackBotDBBase):
         Returns:
             List[str]: A list of Python paths, each represenging a module
         """
-
         results: List[str] = []
         select_sql = 'SELECT * FROM StackBotBlueprintModule'
         cursor = self._db.execute(select_sql)
@@ -489,7 +502,7 @@ class StackBotSQLiteDB(StackBotDBBase):
 
 
     def delete_blueprint_module(self, path: str) -> None:
-        """Delete an existing module
+        """Delete an existing module.
 
         Args:
             path (str): Full Python path to the module
@@ -546,7 +559,7 @@ class StackBotSQLiteDB(StackBotDBBase):
         self._db.execute(delete_sql)
 
     def get_blueprint_package(self, path: str) -> bool:
-        """Queries if a blueprint package exists in the database
+        """Queries if a blueprint package exists in the database.
 
         Args:
             path (str): _description_
@@ -614,9 +627,9 @@ class StackBotSQLiteDB(StackBotDBBase):
 
         return row['id']
 
+    # TODO: Can this be cached?
     def _get_attribute_id(self, resource: StackBotResource, name: str) -> int:
-        """Fetch the database ID for the requested attribute
-        TODO: Can this be cached?
+        """Fetch the database ID for the requested attribute.
 
         Args:
             resource (StackBotResource): The resource that the attibute belongs to.
@@ -640,9 +653,10 @@ class StackBotSQLiteDB(StackBotDBBase):
 
         return row['id']
 
+    # TODO: Can this be cached?
     def _resource_id_from_path(self, path: str) -> int:
-        """Helper method to fetch the ID of the resource by its Python path
-        TODO: Can this be cached?
+        """Helper method to fetch the ID of the resource by its Python path.
+
         Args:
             path (str): Python path of the resource within the blueprint
 
