@@ -92,8 +92,8 @@ class StackBotAttributeDiff:
                 buffer.write(Fore.YELLOW + f'!!\t{self.name()}: {self.dest_value} => {self.src_value}\n')
             else:
                 buffer.write(Fore.YELLOW + f'@@\t{self.name()}: {self.dest_value} => {self.src_value}\n')
-
-        buffer.write(Fore.WHITE + f'  \t{self.name()}: {self.dest_value} => {self.src_value}\n')
+        else:
+            buffer.write(Fore.WHITE + f'  \t{self.name()}: {self.dest_value} => {self.src_value}\n')
 
 @dataclass
 class StackBotResourceDiff:
