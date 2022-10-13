@@ -1,2 +1,2 @@
 """Testing."""
-from stackbot.resource.base import StackBotResource
+from stackbot.resource.base import AttributeModified, StackBotResource

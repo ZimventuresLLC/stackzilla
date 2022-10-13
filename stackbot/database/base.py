@@ -122,6 +122,21 @@ class StackBotDBBase(ABC):
         """
 
     @abstractmethod
+    def get_attribute(self, resource: 'StackBotResource', name: str) -> Any:
+        """Fetch the value for an attribute.
+
+        Args:
+            resource (StackBotResource): The name of the resource to fetch the attribute for
+            name (str): The name of the attribute to fetch the value for
+
+        Returns:
+            Any: The attribute value.
+
+        Raises:
+            AttributeNotFound: Raised if the attribute is not found.
+        """
+
+    @abstractmethod
     def delete_attribute(self, resource: 'StackBotResource', name: str):
         """Delete an attribute previously added to the database.
 

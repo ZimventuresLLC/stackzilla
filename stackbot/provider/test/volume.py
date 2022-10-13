@@ -9,6 +9,7 @@ from stackbot.resource.base import ResourceVersion, StackBotResource
 class Volume(StackBotResource):
     """Dummy volume resource."""
 
+    format = StackBotAttribute(required=False, choices=['xfs', 'hdfs', 'fat'], default='xfs')
     size = StackBotAttribute(required=True)
 
     def __init__(self) -> None:
@@ -20,9 +21,6 @@ class Volume(StackBotResource):
         """Called when the resource is created."""
         self._logger.debug(message="Creating volume")
         return super().create()
-
-    def verify(self) -> None:
-        """Required to be overridden."""
 
     def depends_on(self) -> List['StackBotResource']:
         """Required to be overridden."""

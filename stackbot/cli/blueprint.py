@@ -4,6 +4,7 @@ from io import StringIO
 import click
 
 from stackbot.blueprint import StackBotBlueprint
+from stackbot.blueprint.exceptions import BlueprintVerifyFailure
 from stackbot.database.base import StackBotDB
 from stackbot.diff import StackBotDiff
 from stackbot.diff.diff import StackBotDiffResult
@@ -22,7 +23,15 @@ def apply(path):
     # TODO: Import the blueprint from disk
     disk_blueprint = StackBotBlueprint(path=path)
     disk_blueprint.load()
-    disk_blueprint.verify()
+
+    try:
+        disk_blueprint.verify()
+    except BlueprintVerifyFailure as verify_error:
+
+        for error in verify_error.errors:
+            error.print()
+
+        raise click.ClickException('Blueprint verification failed')
 
     # TODO: Import the blueprint from the database
     db_blueprint = StackBotBlueprint()

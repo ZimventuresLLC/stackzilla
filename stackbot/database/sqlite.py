@@ -299,8 +299,12 @@ class StackBotSQLiteDB(StackBotDBBase):
         module = importlib.import_module(module_name)
         class_ = getattr(module, class_name)
 
-        # TODO: Populate the class with the parameters
-        return class_()
+        obj = class_()
+
+        # Load all of the attribute values from the database
+        obj.load_from_db()
+
+        return obj
 
     def update_resource(self, resource: StackBotResource) -> None:
         """Called to update a resource in the database.
@@ -320,7 +324,6 @@ class StackBotSQLiteDB(StackBotDBBase):
             value (Any): The value to assign to the attribute
         """
         resource_id = self._resource_id_from_path(resource.path())
-
         # Ensure that an attribute with the resource_id/name combo doesn't alreadt exist
         try:
             self._get_attribute_id(resource=resource, name=name)

@@ -9,9 +9,10 @@ from colorama import Fore, Style
 from stackbot.attribute import StackBotAttribute
 from stackbot.blueprint.blueprint import StackBotBlueprint
 from stackbot.database.base import StackBotDB
-from stackbot.diff.exceptions import NoDiffError
+from stackbot.diff.exceptions import (NoDiffError,
+                                      UnhandledAttributeModifications)
 from stackbot.graph import Graph
-from stackbot.resource import StackBotResource
+from stackbot.resource import AttributeModified, StackBotResource
 from stackbot.utils.constants import DB_BP_PREFIX
 
 
@@ -89,11 +90,11 @@ class StackBotAttributeDiff:
             buffer.write(Fore.RED + f'--\t{self.name()}\n')
         elif self.result == StackBotDiffResult.CONFLICT:
             if self.src_attribute.modify_rebuild:
-                buffer.write(Fore.YELLOW + f'!!\t{self.name()}: {self.dest_value} => {self.src_value}\n')
+                buffer.write(Fore.YELLOW + f'!!\t{self.name()}: {self.filtered_dest_value()} => {self.filtered_src_value()}\n')
             else:
-                buffer.write(Fore.YELLOW + f'@@\t{self.name()}: {self.dest_value} => {self.src_value}\n')
+                buffer.write(Fore.YELLOW + f'@@\t{self.name()}: {self.filtered_dest_value()} => {self.filtered_src_value()}\n')
         else:
-            buffer.write(Fore.WHITE + f'  \t{self.name()}: {self.dest_value} => {self.src_value}\n')
+            buffer.write(Fore.WHITE + f'  \t{self.name()}: {self.filtered_dest_value()} => {self.filtered_src_value()}\n')
 
 @dataclass
 class StackBotResourceDiff:
@@ -180,10 +181,47 @@ class StackBotDiff:
             # TODO: Make this multi-threaded since none of the resources within a phase will depend on each other
             # Get the diffs for each resource in the phase
             for resource in phase:
-                diff: StackBotResourceDiff = self._result.resource_diffs[resource.path()]
+                obj = resource()
+                diff: StackBotResourceDiff = self._result.resource_diffs[obj.path()]
 
                 if diff.result == StackBotDiffResult.CONFLICT:
                     diff.src_resource.update()
+
+                    # Build a dictionary of AttributeModified objects to track what has and hasn't been handled.
+                    modified_attrs = {}
+                    for attr_name, attr_diff in diff.attribute_diffs.items():
+                        modified_attrs[attr_name] = AttributeModified(name=attr_name,
+                                                                      previous_value=attr_diff.dest_value,
+                                                                      new_value=attr_diff.src_value,
+                                                                      handled=False)
+
+                    # Invoke any StackBotResource::*_modified() handlers
+                    for attr_name, attr_diff in diff.attribute_diffs.items():
+
+                        # _on_attribute_modified() should only be accessed from here.
+                        # pylint: disable=protected-access
+                        if obj._on_attribute_modified(attribute_name=attr_name,
+                                                      previous_value=attr_diff.dest_value,
+                                                      new_value=attr_diff.src_value):
+
+                            # Note that the attribute modification has been handled
+                            modified_attrs[attr_name].handled = True
+
+                    # Invoke the "all-in-one" handler
+                    obj.on_attributes_modified(attributes=modified_attrs)
+
+                    # Check for any unhandled attributes
+                    unhandled_attributes = []
+                    for attribute in modified_attrs.values():
+                        if attribute.handled is False:
+                            unhandled_attributes.append(attribute)
+                        else:
+                            # Persist the attribute to the database
+                            StackBotDB.db.update_attribute(resource=obj, name=attribute.name, value=attribute.new_value)
+
+                    if unhandled_attributes:
+                        raise UnhandledAttributeModifications(unhandled_attributes)
+
                 elif diff.result == StackBotDiffResult.DELETED:
                     diff.dest_resource.delete()
                     diff.dest_resource.delete_from_db()
@@ -250,6 +288,9 @@ class StackBotDiff:
             # Is the resource available in both the source and destination
             if resource_name in dest_resources:
                 dest_resource: StackBotResource = dest_resources[resource_name]()
+
+                # Load the resource's attributes from the database (instead of using the ones from the blueprint)
+                dest_resource.load_from_db()
 
                 # Diff the resources
                 attr_diff_result, attr_diffs = self.compare(source=src_resource, destination=dest_resource)

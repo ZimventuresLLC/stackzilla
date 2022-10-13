@@ -84,8 +84,9 @@ def test_invalid_get_resource(database: StackBotSQLiteDB):
 
 def test_get_all_resources(database: StackBotSQLiteDB):
     """Verify the get_all_resources() method"""
-    database.create_resource(resource=Resource)
-    database.create_resource(resource=OtherResource)
+
+    Resource().create_in_db()
+    OtherResource().create_in_db()
 
     resources = database.get_all_resources()
 
@@ -99,11 +100,9 @@ def test_get_all_resources(database: StackBotSQLiteDB):
 def test_duplicate_attributes(database: StackBotSQLiteDB):
     """Verify that you can't create the same attribute twice."""
     my_resource = MyResource()
-    database.create_resource(resource=my_resource)
+    my_resource.create_in_db()
 
     # Snag a random attribute to persist to the database
-    database.create_attribute(resource=my_resource, name='default_int', value=getattr(my_resource, 'default_int'))
-
     with pytest.raises(DuplicateAttribute):
         database.create_attribute(resource=my_resource, name='default_int', value=getattr(my_resource, 'default_int'))
 
