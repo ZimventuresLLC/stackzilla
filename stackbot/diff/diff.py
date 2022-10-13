@@ -224,10 +224,8 @@ class StackBotDiff:
 
                 elif diff.result == StackBotDiffResult.DELETED:
                     diff.dest_resource.delete()
-                    diff.dest_resource.delete_from_db()
                 elif diff.result == StackBotDiffResult.NEW:
                     diff.src_resource.create()
-                    diff.src_resource.create_in_db()
                 elif diff.result == StackBotDiffResult.SAME:
                     continue
                 else:

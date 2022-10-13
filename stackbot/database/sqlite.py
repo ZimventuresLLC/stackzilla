@@ -524,12 +524,14 @@ class StackBotSQLiteDB(StackBotDBBase):
         blueprint_module_id = self._get_blueprint_module_id(path=path)
         delete_sql = 'DELETE FROM StackBotBlueprintModule WHERE id=:id'
         self.connection.execute(delete_sql, {'id': blueprint_module_id})
+        self.connection.commit()
 
 
     def delete_all_blueprint_modules(self) -> None:
         """Delete all of the blueprints from the database."""
         delete_sql = 'DELETE FROM StackBotBlueprintModule'
         self.connection.execute(delete_sql)
+        self.connection.commit()
 
     def create_blueprint_package(self, path: str) -> None:
         """Create a new blueprint package.

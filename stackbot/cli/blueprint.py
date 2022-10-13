@@ -1,14 +1,14 @@
 """Click handlers for the blueprint sub-command."""
 from io import StringIO
+from typing import List, Type
 
 import click
 
 from stackbot.blueprint import StackBotBlueprint
 from stackbot.blueprint.exceptions import BlueprintVerifyFailure
 from stackbot.database.base import StackBotDB
-from stackbot.diff import StackBotDiff
-from stackbot.diff.diff import StackBotDiffResult
-
+from stackbot.diff import StackBotDiff, StackBotDiffResult
+from stackbot.graph import Graph
 
 @click.group(name='blueprint')
 def blueprint():
@@ -136,3 +136,26 @@ def diff_blueprints(path, verify):
 def delete():
     """Delete the blueprint."""
     StackBotDB.db.open()
+
+    # Load the blueprint from disk
+    db_blueprint = StackBotBlueprint()
+    db_blueprint.load()
+
+    if click.confirm('Delete blueprint?') is False:
+        return
+
+    # Show the blueprint
+    
+    graph: Graph = db_blueprint.build_graph()
+    phases: List[List[Type[object]]] = graph.resolve(reverse=True)
+
+    for phase in phases:
+        # TODO: make each phase multi-threaded
+
+        for resource in phase:
+            obj = resource()
+            obj.delete()
+
+    # Delete all of the blueprint information from the database
+    StackBotDB.db.delete_all_blueprint_packages()
+    StackBotDB.db.delete_all_blueprint_modules()

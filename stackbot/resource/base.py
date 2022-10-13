@@ -5,8 +5,9 @@ from dataclasses import dataclass
 from typing import Any, Dict, List
 
 from stackbot.attribute import StackBotAttribute
+from stackbot.logging.core import CoreLogger
 from stackbot.database.base import StackBotDB
-from stackbot.database.exceptions import AttributeNotFound
+from stackbot.database.exceptions import AttributeNotFound, ResourceNotFound
 from stackbot.resource.exceptions import ResourceVerifyError
 from stackbot.utils.constants import DB_BP_PREFIX
 
@@ -14,7 +15,7 @@ from stackbot.utils.constants import DB_BP_PREFIX
 @dataclass
 class AttributeModified:
     """Data structure to store attribute modification data."""
-    
+
     name: str
     previous_value: Any
     new_value: Any
@@ -35,6 +36,7 @@ class StackBotResource:
 
     def __init__(self) -> None:
         """Base constructor for all StackBot resource types."""
+        self._core_logger = CoreLogger(component='resource')
 
     @classmethod
     def path(cls, remove_prefix: bool=False) -> str:
@@ -53,12 +55,14 @@ class StackBotResource:
 
     def create(self) -> None:
         """Create a new resource."""
+        self.create_in_db()
 
     def update(self) -> None:
         """Apply the changes to this resource."""
 
     def delete(self) -> None:
         """Delete a previously created resource."""
+        self.delete_from_db()
 
     @abstractmethod
     def depends_on(self) -> List['StackBotResource']:
@@ -202,8 +206,15 @@ class StackBotResource:
     def delete_from_db(self):
         """Delete the resource, and all its attributes, from the database."""
         for name in self.attributes:
-            StackBotDB.db.delete_attribute(resource=self, name=name)
+            try:
+                StackBotDB.db.delete_attribute(resource=self, name=name)
+            except ResourceNotFound:
+                self._core_logger.debug(message='Resource not found during attribute deletion',
+                                        extra={'resource_name': self.path()})
 
         # If the path for the resource is rooted with the database prefix, replace it with '.'
-        resource_path = self.path()
-        StackBotDB.db.delete_resource(path=resource_path)
+        try:
+            StackBotDB.db.delete_resource(path=self.path())
+        except ResourceNotFound:
+            self._core_logger.debug(message='Resource not found during deletion',
+                                    extra={'resource_name': self.path()})

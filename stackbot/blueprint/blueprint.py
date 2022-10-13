@@ -71,7 +71,7 @@ class StackBotBlueprint:
             BlueprintVerifyFailure: Raised if any of the resources raise a verification error
         """
         # Will raise CircularDependency if the graph can not be resolved
-        graph = self._build_graph()
+        graph = self.build_graph()
         graph.resolve()
 
         # Verify all of the resources
@@ -87,7 +87,7 @@ class StackBotBlueprint:
         if resource_verify_errors:
             raise BlueprintVerifyFailure(errors=resource_verify_errors)
 
-    def _build_graph(self) -> Graph:
+    def build_graph(self) -> Graph:
         """Build a dependency graph from all of the classes that were previously imported."""
         if self._importer.loaded is False:
             raise NotLoaded
