@@ -6,6 +6,8 @@ class DatabaseExists(Exception):
 class DatabaseNotFound(Exception):
     """Raised for cases where the specified database name was not found."""
 
+class DatabaseNotOpen(Exception):
+    """Raised when the database is being accessed prior to being open."""
 class MetadataKeyNotFound(Exception):
     """Raised when the metadata key is not found for a given query."""
 

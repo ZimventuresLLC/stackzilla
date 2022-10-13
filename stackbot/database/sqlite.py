@@ -15,7 +15,7 @@ from stackbot.database.exceptions import (AttributeNotFound,
                                           CreateBlueprintModuleFailure,
                                           CreateBlueprintPackageFaiure,
                                           CreateResourceFailure,
-                                          DatabaseExists, DatabaseNotFound,
+                                          DatabaseExists, DatabaseNotFound, DatabaseNotOpen,
                                           DuplicateAttribute,
                                           DuplicateBlueprintModule,
                                           DuplicateBlueprintPackage,
@@ -49,6 +49,14 @@ class StackBotSQLiteDB(StackBotDBBase):
             assert StackBotDB.db is None
 
         StackBotDB.db = self
+
+    @property
+    def connection(self) -> Connection:
+        """Fetch the DB connection object."""
+        if self._db is None:
+            raise DatabaseNotOpen
+
+        return self._db
 
     def create(self, in_memory: bool = False) -> None:
         """Create the database file.
@@ -140,10 +148,10 @@ class StackBotSQLiteDB(StackBotDBBase):
         """Close an existing connection.
 
         Raises:
-            DatabaseNotFound: Raised if there is no existing connection.
+            DatabaseNotOpen: Raised if there is no existing connection.
         """
         if self._db is None:
-            raise DatabaseNotFound
+            raise DatabaseNotOpen
 
         self._close()
 
@@ -152,8 +160,8 @@ class StackBotSQLiteDB(StackBotDBBase):
         if self._db is None:
             return
 
-        self._db.commit()
-        self._db.close()
+        self.connection.commit()
+        self.connection.close()
         self._db = None
         self._cursor = None
 
@@ -169,7 +177,7 @@ class StackBotSQLiteDB(StackBotDBBase):
         Returns:
             Any: The value associated with the key.
         """
-        item = self._db.execute(f'SELECT value FROM {StackBotSQLiteDB.MetadataTableName}  WHERE key = ?', (key,)).fetchone()
+        item = self.connection.execute(f'SELECT value FROM {StackBotSQLiteDB.MetadataTableName}  WHERE key = ?', (key,)).fetchone()
 
         if item is None:
             raise MetadataKeyNotFound
@@ -187,7 +195,7 @@ class StackBotSQLiteDB(StackBotDBBase):
         json_value = json.dumps(value)
         self._logger.debug(f'Setting metadata on {key = }')
         self._cursor.execute(f'REPLACE INTO {StackBotSQLiteDB.MetadataTableName} (key, value) VALUES (?,?)', (key, json_value))
-        self._db.commit()
+        self.connection.commit()
 
     def delete_metadata(self, key: str) -> None:
         """Delete the specified metadata entry.
@@ -201,8 +209,8 @@ class StackBotSQLiteDB(StackBotDBBase):
         if self.check_metadata(key=key) is False:
             raise MetadataKeyNotFound
 
-        self._db.execute(f'DELETE FROM {StackBotSQLiteDB.MetadataTableName}  WHERE key = ?', (key,))
-        self._db.commit()
+        self.connection.execute(f'DELETE FROM {StackBotSQLiteDB.MetadataTableName}  WHERE key = ?', (key,))
+        self.connection.commit()
 
     def check_metadata(self, key: str) -> bool:
         """Query if the specified metadata key exists.
@@ -213,7 +221,7 @@ class StackBotSQLiteDB(StackBotDBBase):
         Returns:
             bool: True if the key exists, False otherwise
         """
-        return self._db.execute(
+        return self.connection.execute(
             f'SELECT 1 FROM {StackBotSQLiteDB.MetadataTableName} WHERE key = ?', (key,)
         ).fetchone() is not None
 
@@ -241,8 +249,8 @@ class StackBotSQLiteDB(StackBotDBBase):
                 'version_name': version.name
             }
 
-            self._db.execute(create_sql, create_params)
-            self._db.commit()
+            self.connection.execute(create_sql, create_params)
+            self.connection.commit()
         except sqlite3.IntegrityError as exc:
             raise CreateResourceFailure() from exc
 
@@ -256,8 +264,8 @@ class StackBotSQLiteDB(StackBotDBBase):
             ResourceNotFound: Raised if the resource specified by path does not exist in the database.
         """
         resource_id: int = self._resource_id_from_path(path=path)
-        self._db.execute('DELETE FROM StackBotResource WHERE id=:resource_id', {'resource_id': resource_id})
-        self._db.commit()
+        self.connection.execute('DELETE FROM StackBotResource WHERE id=:resource_id', {'resource_id': resource_id})
+        self.connection.commit()
 
     def get_all_resources(self) -> List[StackBotResource]:
         """Fetch all of the resources available in the databae.
@@ -267,7 +275,7 @@ class StackBotSQLiteDB(StackBotDBBase):
         """
         results: List[StackBotResource] = []
 
-        cursor = self._db.execute('SELECT * FROM StackBotResource')
+        cursor = self.connection.execute('SELECT * FROM StackBotResource')
 
         for result in cursor.fetchall():
             # Fetch a StackBotResource object WITH its parameters field populated
@@ -345,8 +353,8 @@ class StackBotSQLiteDB(StackBotDBBase):
         }
 
         try:
-            self._db.execute(sql, insert_data)
-            self._db.commit()
+            self.connection.execute(sql, insert_data)
+            self.connection.commit()
         except sqlite3.IntegrityError as exc:
             raise CreateAttributeFailure() from exc
 
@@ -363,8 +371,8 @@ class StackBotSQLiteDB(StackBotDBBase):
         attribute_id = self._get_attribute_id(resource=resource, name=name)
 
         delete_sql = 'DELETE FROM StackBotAttribute WHERE id=:attribute_id'
-        self._db.execute(delete_sql, {'attribute_id': attribute_id})
-        self._db.commit()
+        self.connection.execute(delete_sql, {'attribute_id': attribute_id})
+        self.connection.commit()
 
     def update_attribute(self, resource: StackBotResource, name: str, value: Any):
         """Update a previously created attribute.
@@ -390,7 +398,7 @@ class StackBotSQLiteDB(StackBotDBBase):
             "name": name
         }
 
-        self._db.execute(update_sql, update_data)
+        self.connection.execute(update_sql, update_data)
 
     def get_attribute(self, resource: StackBotResource, name: str) -> Any:
         """Fetch a single attribute from the dataase.
@@ -409,7 +417,7 @@ class StackBotSQLiteDB(StackBotDBBase):
 
         select_sql = 'SELECT * FROM StackBotAttribute WHERE resource_id=:resource_id AND name=:name'
         select_args = {'resource_id': resource_id, 'name': name}
-        cursor = self._db.execute(select_sql, select_args )
+        cursor = self.connection.execute(select_sql, select_args )
 
         row = cursor.fetchone()
         if row is None:
@@ -440,8 +448,8 @@ class StackBotSQLiteDB(StackBotDBBase):
         }
 
         try:
-            self._db.execute(sql, insert_data)
-            self._db.commit()
+            self.connection.execute(sql, insert_data)
+            self.connection.commit()
         except sqlite3.IntegrityError as exc:
             raise CreateBlueprintModuleFailure() from exc
 
@@ -458,7 +466,7 @@ class StackBotSQLiteDB(StackBotDBBase):
             BlueprintModuleNotFound: Raised when the path does not exist.
         """
         select_sql = 'SELECT * FROM StackBotBlueprintModule WHERE path=:path'
-        cursor = self._db.execute(select_sql, {'path': path})
+        cursor = self.connection.execute(select_sql, {'path': path})
         row = cursor.fetchone()
         if row is None:
             raise BlueprintModuleNotFound
@@ -473,7 +481,7 @@ class StackBotSQLiteDB(StackBotDBBase):
         """
         results: List[str] = []
         select_sql = 'SELECT * FROM StackBotBlueprintModule'
-        cursor = self._db.execute(select_sql)
+        cursor = self.connection.execute(select_sql)
         for row in cursor.fetchall():
             results.append(row['path'])
 
@@ -501,7 +509,7 @@ class StackBotSQLiteDB(StackBotDBBase):
             "id": blueprint_module_id
         }
 
-        self._db.execute(update_sql, update_data)
+        self.connection.execute(update_sql, update_data)
 
 
     def delete_blueprint_module(self, path: str) -> None:
@@ -515,13 +523,13 @@ class StackBotSQLiteDB(StackBotDBBase):
         """
         blueprint_module_id = self._get_blueprint_module_id(path=path)
         delete_sql = 'DELETE FROM StackBotBlueprintModule WHERE id=:id'
-        self._db.execute(delete_sql, {'id': blueprint_module_id})
+        self.connection.execute(delete_sql, {'id': blueprint_module_id})
 
 
     def delete_all_blueprint_modules(self) -> None:
         """Delete all of the blueprints from the database."""
         delete_sql = 'DELETE FROM StackBotBlueprintModule'
-        self._db.execute(delete_sql)
+        self.connection.execute(delete_sql)
 
     def create_blueprint_package(self, path: str) -> None:
         """Create a new blueprint package.
@@ -541,8 +549,8 @@ class StackBotSQLiteDB(StackBotDBBase):
         }
 
         try:
-            self._db.execute(sql, insert_data)
-            self._db.commit()
+            self.connection.execute(sql, insert_data)
+            self.connection.commit()
         except sqlite3.IntegrityError as exc:
             raise CreateBlueprintPackageFaiure() from exc
 
@@ -554,12 +562,12 @@ class StackBotSQLiteDB(StackBotDBBase):
         """
         blueprint_package_id = self._get_blueprint_package_id(path=path)
         delete_sql = 'DELETE FROM StackBotBlueprintPackage WHERE id=:id'
-        self._db.execute(delete_sql, {'id': blueprint_package_id})
+        self.connection.execute(delete_sql, {'id': blueprint_package_id})
 
     def delete_all_blueprint_packages(self) -> None:
         """Delete all of the blueprint packages from the database."""
         delete_sql = 'DELETE FROM StackBotBlueprintPackage'
-        self._db.execute(delete_sql)
+        self.connection.execute(delete_sql)
 
     def get_blueprint_package(self, path: str) -> bool:
         """Queries if a blueprint package exists in the database.
@@ -584,7 +592,7 @@ class StackBotSQLiteDB(StackBotDBBase):
         """
         results: List[str] = []
         select_sql = 'SELECT * FROM StackBotBlueprintPackage'
-        cursor = self._db.execute(select_sql)
+        cursor = self.connection.execute(select_sql)
         for row in cursor.fetchall():
             results.append(row['path'])
 
@@ -603,7 +611,7 @@ class StackBotSQLiteDB(StackBotDBBase):
             int: The row ID for the module
         """
         select_sql = 'SELECT * FROM StackBotBlueprintPackage WHERE path=:path'
-        cursor = self._db.execute(select_sql, {'path': path})
+        cursor = self.connection.execute(select_sql, {'path': path})
         row = cursor.fetchone()
         if row is None:
             raise BlueprintPackageNotFound
@@ -623,7 +631,7 @@ class StackBotSQLiteDB(StackBotDBBase):
             int: The row ID for the module
         """
         select_sql = 'SELECT * FROM StackBotBlueprintModule WHERE path=:path'
-        cursor = self._db.execute(select_sql, {'path': path})
+        cursor = self.connection.execute(select_sql, {'path': path})
         row = cursor.fetchone()
         if row is None:
             raise BlueprintModuleNotFound
@@ -648,7 +656,7 @@ class StackBotSQLiteDB(StackBotDBBase):
 
         select_sql = 'SELECT * FROM StackBotAttribute WHERE resource_id=:resource_id AND name=:name'
         select_args = {'resource_id': resource_id, 'name': name}
-        cursor = self._db.execute(select_sql, select_args )
+        cursor = self.connection.execute(select_sql, select_args )
 
         row = cursor.fetchone()
         if row is None:
@@ -669,8 +677,8 @@ class StackBotSQLiteDB(StackBotDBBase):
         Returns:
             int: The SQLite ID of the row for the resource
         """
-        with self._db:
-            cursor = self._db.execute('SELECT * FROM StackBotResource WHERE path=:path', {'path': path})
+        with self.connection:
+            cursor = self.connection.execute('SELECT * FROM StackBotResource WHERE path=:path', {'path': path})
             row = cursor.fetchone()
             if row is None:
                 raise ResourceNotFound(path)
