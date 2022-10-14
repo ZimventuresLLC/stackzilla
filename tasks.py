@@ -28,7 +28,7 @@ def build(c):
 
 def publish_test(c):
     """Publish the distribution to the test PyPI server"""
-    c.run('twine upload -r testpypi dist/*')
+    c.run('twine upload -r testpypi dist/* ')
 
 def publish(c):
     """Publish the distribution to the production PyPI server"""

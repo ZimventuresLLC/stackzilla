@@ -39,15 +39,19 @@ setup(
     author='Zimventures, LLC',
     author_email='rob@stackzilla.dev',
     url='https://github.com/Stackzilla/stackzilla',
-    description='Provision your stack - with a snake!',
+    description='An ORM for your application stack.',
     long_description=open('README.md').read(),
-    license='GNU AFFERO GENERAL PUBLIC LICENSE'
+    license='GNU Affero General Public License v3',
     classifiers=[
-        'Development Status :: 4 - Beta',
+        'Development Status :: 3 - Alpha',
+        "Environment :: Console",
         'Intended Audience :: Developers',
-        'License :: OSI Approved :: GNU AFFERO GENERAL PUBLIC LICENSE',
+        'License :: OSI Approved :: GNU Affero General Public License v3',
         'Operating System :: POSIX',
-        'Programming Language :: Python',
+        "Programming Language :: Python :: 3",
+        "Programming Language :: Python :: 3.7",
+        "Programming Language :: Python :: 3.8",
+        "Programming Language :: Python :: 3.9",
         'Topic :: Software Development :: Libraries',
     ],
 
@@ -59,6 +63,7 @@ setup(
                                             'stackzilla.database',
                                             'stackzilla.resource'
                                             'stackzilla.utils']),
+    python_requires='>3.6',
     include_package_data=True,
     namespace_packages=['stackzilla'],
     install_requires=install_requirements,
