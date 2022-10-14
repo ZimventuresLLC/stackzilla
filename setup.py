@@ -8,7 +8,7 @@ version = open('VERSION').read().strip()
 dirname = os.path.dirname(__file__)
 
 # Save version and author to __meta__.py
-path = os.path.join(dirname, 'stackbot', '__meta__.py')
+path = os.path.join(dirname, 'stackzilla', '__meta__.py')
 data = (
     f'"""Package versioning info."""'
     f"# Automatically created. Please do not edit.\n"
@@ -20,13 +20,13 @@ data = (
 with open(path, 'wb') as F:
     F.write(data.encode())
 
-# Read in all of the requirements to install/run StackBot
+# Read in all of the requirements to install/run Stackzilla
 install_requirements = []
 with open('requirements.txt') as requirements:
     for package in requirements.readlines():
         install_requirements.append(package)
 
-# Read in all of the requirements to run the tests on the StackBot codebase
+# Read in all of the requirements to run the tests on the Stackzilla codebase
 testing_requirements = []
 with open('requirements-testing.txt') as testing_req_fh:
     for package in testing_req_fh.readlines():
@@ -34,11 +34,11 @@ with open('requirements-testing.txt') as testing_req_fh:
 
 setup(
     # Basic info
-    name='stackbot',
+    name='stackzilla',
     version=version,
     author='Zimventures, LLC',
-    author_email='stackbot@zimventures.com',
-    url='https://github.com/zimventures/stackbot',
+    author_email='stackzilla@zimventures.com',
+    url='https://github.com/zimventures/stackzilla',
     description='Provision your stack - with a snake!',
     long_description=open('README.md').read(),
     classifiers=[
@@ -51,15 +51,15 @@ setup(
     ],
 
     # Packages and depencies
-    package_dir={'stackbot': 'stackbot'},
-    packages=find_namespace_packages(include=['stackbot.blueprint',
-                                            'stackbot.cli',
-                                            'stackbot.provider',
-                                            'stackbot.database',
-                                            'stackbot.resource'
-                                            'stackbot.utils']),
+    package_dir={'stackzilla': 'stackzilla'},
+    packages=find_namespace_packages(include=['stackzilla.blueprint',
+                                            'stackzilla.cli',
+                                            'stackzilla.provider',
+                                            'stackzilla.database',
+                                            'stackzilla.resource'
+                                            'stackzilla.utils']),
     include_package_data=True,
-    namespace_packages=['stackbot'],
+    namespace_packages=['stackzilla'],
     install_requires=install_requirements,
     extras_require={
         'testing': testing_requirements,
@@ -71,7 +71,7 @@ setup(
     # Scripts
     entry_points={
         'console_scripts': [
-            'stackbot=stackbot.cli.main:cli'],
+            'stackzilla=stackzilla.cli.main:cli'],
     },
 
     # Other configurationss

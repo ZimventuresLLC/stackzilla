@@ -1,4 +1,4 @@
-# StackBot
+# Stackzilla
 Provision and manage your stack - with a snake!
 
 # Use Case (for development)
@@ -9,6 +9,6 @@ Blueprint has 2 webservers, a load balancer
 4) Delete blueprint
 
 What will be needed:
-- Database abstraction 
+- Database abstraction
 - Graph resolution
 - Linode provider

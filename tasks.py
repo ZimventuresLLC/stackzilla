@@ -1,7 +1,7 @@
 """Tasks that can be executed via 'invoke <cmd>' for developers."""
 from invoke import task
 
-source_root = 'stackbot'
+source_root = 'stackzilla'
 
 @task
 def lint(c):
