@@ -20,7 +20,7 @@ jobs:
 
     - name: Run the analysis tool
       run: |
-        coverage run -m pytest ./stackbot/
+        coverage run -m pytest ./stackzilla/
         coverage xml
 
     - name: Code Coverage Summary Report
