@@ -4,8 +4,8 @@ import os
 from setuptools import setup, find_namespace_packages
 
 # Meta information
-version = open('VERSION').read().strip()
-dirname = os.path.dirname(__file__)
+dirname = os.path.dirname(os.path.realpath(__file__))
+version = open(os.path.join(dirname, 'VERSION'), encoding='utf-8').read().strip()
 
 # Save version and author to __meta__.py
 path = os.path.join(dirname, 'stackzilla', '__meta__.py')
@@ -37,14 +37,15 @@ setup(
     name='stackzilla',
     version=version,
     author='Zimventures, LLC',
-    author_email='stackzilla@zimventures.com',
-    url='https://github.com/zimventures/stackzilla',
+    author_email='rob@stackzilla.dev',
+    url='https://github.com/Stackzilla/stackzilla',
     description='Provision your stack - with a snake!',
     long_description=open('README.md').read(),
+    license='GNU AFFERO GENERAL PUBLIC LICENSE'
     classifiers=[
         'Development Status :: 4 - Beta',
         'Intended Audience :: Developers',
-        'License :: OSI Approved :: GNU General Public License (GPL)',
+        'License :: OSI Approved :: GNU AFFERO GENERAL PUBLIC LICENSE',
         'Operating System :: POSIX',
         'Programming Language :: Python',
         'Topic :: Software Development :: Libraries',

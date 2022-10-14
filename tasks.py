@@ -19,3 +19,17 @@ def test(c):
 def serve_docs(c):
     """Start a server to view and automatically buidl documnetation."""
     c.run('sphinx-autobuild docs docs/_build/html/')
+
+@task
+def build(c):
+    """Build a wheel"""
+    c.run('python -m pip install build twine')
+    c.run('python setup.py bdist_wheel --universal')
+
+def publish_test(c):
+    """Publish the distribution to the test PyPI server"""
+    c.run('twine upload -r testpypi dist/*')
+
+def publish(c):
+    """Publish the distribution to the production PyPI server"""
+    c.run('twine upload dist/*')
