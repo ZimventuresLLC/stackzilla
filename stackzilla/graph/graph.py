@@ -1,6 +1,6 @@
 """Module for graph resolution functionality."""
 from dataclasses import dataclass
-from typing import List, Type
+from typing import Dict, List, Type
 
 from stackzilla.graph.exceptions import CircularDependency
 from stackzilla.logging.core import CoreLogger
@@ -24,7 +24,7 @@ class Graph:
         """Default constructor."""
         # Dictionary of all the graph nodes. Each entry is indexed by the
         # id() of the Node.obj (which is an int)
-        self._nodes: dict[int, Node] = {}
+        self._nodes: Dict[int, Node] = {}
         self._logger = CoreLogger(component='graph')
 
     def add_node(self, obj: Type[object], dependencies: List[Type[object]]):
@@ -56,7 +56,7 @@ class Graph:
         phases: List[List[object]] = []
 
         # Create a copy of the nodes dictionary since we'll be removing entries from it
-        nodes: dict[int, Node] = self._nodes.copy()
+        nodes: Dict[int, Node] = self._nodes.copy()
 
         # List of objects for the current phase
         current_phase: List[Type[object]] = []

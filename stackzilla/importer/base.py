@@ -4,7 +4,7 @@ import sys
 from abc import abstractmethod
 from dataclasses import dataclass
 from types import ModuleType
-from typing import List, Optional, Type
+from typing import Dict, List, Optional, Type
 
 from stackzilla.importer.exceptions import ClassNotFound
 from stackzilla.logging.core import CoreLogger
@@ -36,8 +36,8 @@ class BaseImporter:
         self._logger: CoreLogger = CoreLogger('importer')
 
         self._packages = {}
-        self._modules: dict[ModuleInfo] = {}
-        self._classes: dict[str, Type[object]] = {}
+        self._modules: Dict[ModuleInfo] = {}
+        self._classes: Dict[str, Type[object]] = {}
 
         self._package_root = package_root # Used for custom package roots
 
@@ -104,17 +104,17 @@ class BaseImporter:
         return self._loaded
 
     @property
-    def classes(self) -> dict[str, Type[object]]:
+    def classes(self) -> Dict[str, Type[object]]:
         """Fetch a list of all the imported classes which matched any specified import filters."""
         return self._classes
 
     @property
-    def modules(self) -> dict[str, ModuleInfo]:
+    def modules(self) -> Dict[str, ModuleInfo]:
         """Fetch all of the modules that were loaded by the importer."""
         return self._modules
 
     @property
-    def packages(self) -> dict[str, ModuleInfo]:
+    def packages(self) -> Dict[str, ModuleInfo]:
         """Fetch all of the packages that were loaded by the importer."""
         return self._packages
 
