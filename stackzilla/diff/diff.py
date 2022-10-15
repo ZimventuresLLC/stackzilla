@@ -10,7 +10,7 @@ from stackzilla.attribute import StackzillaAttribute
 from stackzilla.blueprint.blueprint import StackzillaBlueprint
 from stackzilla.database.base import StackzillaDB
 from stackzilla.diff.exceptions import (NoDiffError,
-                                      UnhandledAttributeModifications)
+                                        UnhandledAttributeModifications)
 from stackzilla.graph import Graph
 from stackzilla.resource import AttributeModified, StackzillaResource
 from stackzilla.utils.constants import DB_BP_PREFIX

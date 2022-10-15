@@ -10,6 +10,7 @@ from stackzilla.database.base import StackzillaDB
 from stackzilla.diff import StackzillaDiff, StackzillaDiffResult
 from stackzilla.graph import Graph
 
+
 @click.group(name='blueprint')
 def blueprint():
     """Command group for all blueprint CLI commands."""
@@ -67,8 +68,7 @@ def apply(path):
 @blueprint.command('verify')
 @click.option('--path', required=True)
 def verify_blueprint(path):
-    """Verify the on-disk blueprint"""
-
+    """Verify the on-disk blueprint."""
     disk_blueprint = StackzillaBlueprint(path=path)
     disk_blueprint.load()
 
@@ -88,7 +88,6 @@ def verify_blueprint(path):
 @click.option('--verify/--no-verify', default=False, is_flag=True, help='Verify blueprints before diffing them')
 def diff_blueprints(path, verify):
     """Show a diff of the on-disk and database blueprints."""
-
     StackzillaDB.db.open()
 
     # Import the blueprint from disk and database

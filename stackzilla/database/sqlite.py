@@ -9,18 +9,19 @@ from typing import Any, List, Optional
 
 from stackzilla.database.base import StackzillaDB, StackzillaDBBase
 from stackzilla.database.exceptions import (AttributeNotFound,
-                                          BlueprintModuleNotFound,
-                                          BlueprintPackageNotFound,
-                                          CreateAttributeFailure,
-                                          CreateBlueprintModuleFailure,
-                                          CreateBlueprintPackageFaiure,
-                                          CreateResourceFailure,
-                                          DatabaseExists, DatabaseNotFound, DatabaseNotOpen,
-                                          DuplicateAttribute,
-                                          DuplicateBlueprintModule,
-                                          DuplicateBlueprintPackage,
-                                          MetadataKeyNotFound,
-                                          ResourceNotFound)
+                                            BlueprintModuleNotFound,
+                                            BlueprintPackageNotFound,
+                                            CreateAttributeFailure,
+                                            CreateBlueprintModuleFailure,
+                                            CreateBlueprintPackageFaiure,
+                                            CreateResourceFailure,
+                                            DatabaseExists, DatabaseNotFound,
+                                            DatabaseNotOpen,
+                                            DuplicateAttribute,
+                                            DuplicateBlueprintModule,
+                                            DuplicateBlueprintPackage,
+                                            MetadataKeyNotFound,
+                                            ResourceNotFound)
 from stackzilla.logging.core import CoreLogger
 from stackzilla.resource import StackzillaResource
 
