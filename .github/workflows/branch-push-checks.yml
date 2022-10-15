@@ -27,7 +27,7 @@ jobs:
         pip install .[test]
     - name: Running iSort
       run: |
-        iSort ./stackzilla/
+        isort ./stackzilla/
 
     - name: Running pydocstyle
       run: |
