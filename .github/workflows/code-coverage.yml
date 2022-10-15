@@ -21,7 +21,7 @@ jobs:
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
-        pip install -r requirements-dev.txt
+        pip install .[test]
 
     - name: Run the analysis tool
       run: |
@@ -35,4 +35,3 @@ jobs:
         badge: true
         fail_below_min: true
         format: markdown
-

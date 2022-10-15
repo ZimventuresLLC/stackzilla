@@ -2,7 +2,7 @@
 import pytest
 
 from stackzilla.database.exceptions import (BlueprintModuleNotFound,
-                                          DuplicateBlueprintModule)
+                                            DuplicateBlueprintModule)
 from stackzilla.database.sqlite import StackzillaSQLiteDB
 
 FAKE_BLUEPRINT_DATA = """

@@ -4,7 +4,8 @@ import pytest
 
 from stackzilla.attribute import StackzillaAttribute
 from stackzilla.database.exceptions import (AttributeNotFound,
-                                          DuplicateAttribute, ResourceNotFound)
+                                            DuplicateAttribute,
+                                            ResourceNotFound)
 from stackzilla.database.sqlite import StackzillaSQLiteDB
 from stackzilla.resource.base import ResourceVersion, StackzillaResource
 

@@ -1,5 +1,5 @@
 """Class for interacting with end-user blueprints."""
-from typing import List, Optional
+from typing import Dict, List, Optional
 
 from stackzilla.blueprint.exceptions import BlueprintVerifyFailure
 from stackzilla.graph import Graph
@@ -38,29 +38,29 @@ class StackzillaBlueprint:
         self._importer.load()
 
     @property
-    def resources(self) -> dict[str, StackzillaResource]:
+    def resources(self) -> Dict[str, StackzillaResource]:
         """Fetch all of the resources available in the blueprint.
 
         Returns:
-            dict[str, StackzillaResource]: A dictionary of resources. The key is the full Python path to the resource.
+            Dict[str, StackzillaResource]: A dictionary of resources. The key is the full Python path to the resource.
         """
         return self._importer.classes
 
     @property
-    def packages(self) -> dict[str, ModuleInfo]:
+    def packages(self) -> Dict[str, ModuleInfo]:
         """Fetch a mapping of all of the packages available in the blueprint.
 
         Returns:
-            dict[str, ModuleInfo]: A dictionary of ModuleInfo, key'ed by the Python path
+            Dict[str, ModuleInfo]: A dictionary of ModuleInfo, key'ed by the Python path
         """
         return self._importer.packages
 
     @property
-    def modules(self) -> dict[str, ModuleInfo]:
+    def modules(self) -> Dict[str, ModuleInfo]:
         """A mapping of all the modules available in the blueprint.
 
         Returns:
-            dict[str, ModuleInfo]: ModuleInfo for each module, key'ed by the Python path
+            Dict[str, ModuleInfo]: ModuleInfo for each module, key'ed by the Python path
         """
         return self._importer.modules
 

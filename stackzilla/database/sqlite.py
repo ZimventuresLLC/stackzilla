@@ -9,18 +9,19 @@ from typing import Any, List, Optional
 
 from stackzilla.database.base import StackzillaDB, StackzillaDBBase
 from stackzilla.database.exceptions import (AttributeNotFound,
-                                          BlueprintModuleNotFound,
-                                          BlueprintPackageNotFound,
-                                          CreateAttributeFailure,
-                                          CreateBlueprintModuleFailure,
-                                          CreateBlueprintPackageFaiure,
-                                          CreateResourceFailure,
-                                          DatabaseExists, DatabaseNotFound, DatabaseNotOpen,
-                                          DuplicateAttribute,
-                                          DuplicateBlueprintModule,
-                                          DuplicateBlueprintPackage,
-                                          MetadataKeyNotFound,
-                                          ResourceNotFound)
+                                            BlueprintModuleNotFound,
+                                            BlueprintPackageNotFound,
+                                            CreateAttributeFailure,
+                                            CreateBlueprintModuleFailure,
+                                            CreateBlueprintPackageFaiure,
+                                            CreateResourceFailure,
+                                            DatabaseExists, DatabaseNotFound,
+                                            DatabaseNotOpen,
+                                            DuplicateAttribute,
+                                            DuplicateBlueprintModule,
+                                            DuplicateBlueprintPackage,
+                                            MetadataKeyNotFound,
+                                            ResourceNotFound)
 from stackzilla.logging.core import CoreLogger
 from stackzilla.resource import StackzillaResource
 
@@ -177,7 +178,8 @@ class StackzillaSQLiteDB(StackzillaDBBase):
         Returns:
             Any: The value associated with the key.
         """
-        item = self.connection.execute(f'SELECT value FROM {StackzillaSQLiteDB.MetadataTableName}  WHERE key = ?', (key,)).fetchone()
+        sql = f'SELECT value FROM {StackzillaSQLiteDB.MetadataTableName}  WHERE key = ?'
+        item = self.connection.execute(sql, (key,)).fetchone()
 
         if item is None:
             raise MetadataKeyNotFound
@@ -320,7 +322,6 @@ class StackzillaSQLiteDB(StackzillaDBBase):
         Args:
             resource (StackzillaResource): The resource to update in the database
         """
-        # TODO: Implement this
         raise NotImplementedError
 
     def create_attribute(self, resource: StackzillaResource, name: str, value: Any):
@@ -640,7 +641,6 @@ class StackzillaSQLiteDB(StackzillaDBBase):
 
         return row['id']
 
-    # TODO: Can this be cached?
     def _get_attribute_id(self, resource: StackzillaResource, name: str) -> int:
         """Fetch the database ID for the requested attribute.
 
@@ -666,7 +666,6 @@ class StackzillaSQLiteDB(StackzillaDBBase):
 
         return row['id']
 
-    # TODO: Can this be cached?
     def _resource_id_from_path(self, path: str) -> int:
         """Helper method to fetch the ID of the resource by its Python path.
 

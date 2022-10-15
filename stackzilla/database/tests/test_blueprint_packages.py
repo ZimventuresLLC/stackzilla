@@ -2,7 +2,7 @@
 import pytest
 
 from stackzilla.database.exceptions import (BlueprintPackageNotFound,
-                                          DuplicateBlueprintPackage)
+                                            DuplicateBlueprintPackage)
 from stackzilla.database.sqlite import StackzillaSQLiteDB
 
 
