@@ -89,7 +89,8 @@ class StackzillaResource:
 
             # Verify that the value is in the list of choices, if defined
             if attribute.choices and attr_value not in attribute.choices:
-                verify_error_info.add_attribute_error(name=attr_name, error=f'{attr_value} is not one of the available choices: {attribute.choices}')
+                error = f'{attr_value} is not one of the available choices: {attribute.choices}'
+                verify_error_info.add_attribute_error(name=attr_name, error=error)
 
             if attribute.required and attr_value is None:
                 verify_error_info.add_attribute_error(name=attr_name, error='Attribute is required but value is None')
@@ -117,12 +118,10 @@ class StackzillaResource:
         Returns:
             StackzillaAttribute: The StackzillaAttribute object
         """
-        # TODO: Is there a better way to find this?
-        for attr_name, obj in inspect.getmembers(self.__class__):
-            if attr_name == name:
-                return obj
-
-        raise AttributeNotFound
+        try:
+            return getattr(self.__class__, name)
+        except AttributeError as exc:
+            raise AttributeNotFound from exc
 
     def get_attribute_value(self, name) -> Any:
         """Given an attribute name, fetch the value. If there is a default value, and no value exists, return that.

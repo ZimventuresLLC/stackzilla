@@ -163,9 +163,13 @@ class BaseImporter:
         for obj_name, obj in inspect.getmembers(module, inspect.isclass):
             if self._class_filter is None or issubclass(obj, self._class_filter):
 
-                # If the module starts with 'stackzilla.provider', ignore it
-                if obj.__module__.startswith('stackzilla.provider'):
-                    continue
+                # If the module is a stackzilla internal, ignore it
+                skip = False
+                for ignore_module in ['stackzilla.provider', 'stackzilla.resource']:
+                    if obj.__module__.startswith(ignore_module):
+                        skip = True
+                        break
 
-                self._classes[f'{obj.__module__}.{obj.__name__}'] = obj
-                self.on_class_found(name=obj_name, obj=obj)
+                if skip is False:
+                    self._classes[f'{obj.__module__}.{obj.__name__}'] = obj
+                    self.on_class_found(name=obj_name, obj=obj)

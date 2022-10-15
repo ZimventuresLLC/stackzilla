@@ -165,6 +165,7 @@ class StackzillaDiff:
 
         return self._result
 
+    # pylint: disable=too-many-branches,too-many-locals
     def apply(self):
         """Resolve the blueprint graph and apply differences."""
         # Create a graph from the source blueprint
@@ -178,7 +179,6 @@ class StackzillaDiff:
 
         for phase in phases:
 
-            # TODO: Make this multi-threaded since none of the resources within a phase will depend on each other
             # Get the diffs for each resource in the phase
             for resource in phase:
                 obj = resource()
@@ -372,7 +372,6 @@ class StackzillaDiff:
             Tuple[StackBodiff_resulttDiffResult, List[StackzillaAttributeDiff]]:
                 The top level diff result for the resources, and a list of attribute differences between the resources.
         """
-        # TODO: Ensure the resource versions are compatible
         result = StackzillaDiffResult.SAME
 
         results: Dict[str, StackzillaAttributeDiff] = {}

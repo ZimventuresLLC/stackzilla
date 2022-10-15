@@ -24,6 +24,7 @@ class Volume(StackzillaResource):
 
     def depends_on(self) -> List['StackzillaResource']:
         """Required to be overridden."""
+        return []
 
     @classmethod
     def version(cls) -> ResourceVersion:

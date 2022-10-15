@@ -62,5 +62,4 @@ LOGGING_CONFIG = {
 
 def setup_logging():
     """Initialize the logging subsystem."""
-    # TODO: Add support for a logging configuration file to be passed in on the CLI
     logging.config.dictConfig(LOGGING_CONFIG)

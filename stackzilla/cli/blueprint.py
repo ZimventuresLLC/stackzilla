@@ -149,8 +149,6 @@ def delete():
     phases: List[List[Type[object]]] = graph.resolve(reverse=True)
 
     for phase in phases:
-        # TODO: make each phase multi-threaded
-
         for resource in phase:
             obj = resource()
             obj.delete()
