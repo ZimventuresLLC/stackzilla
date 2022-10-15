@@ -22,15 +22,20 @@ with open(path, 'wb') as F:
 
 # Read in all of the requirements to install/run Stackzilla
 install_requirements = []
-with open('requirements.txt') as requirements:
+with open('requirements.txt', encoding='utf-8') as requirements:
     for package in requirements.readlines():
         install_requirements.append(package)
 
 # Read in all of the requirements to run the tests on the Stackzilla codebase
 testing_requirements = []
-with open('requirements-testing.txt') as testing_req_fh:
+with open('requirements-testing.txt', encoding='utf-8') as testing_req_fh:
     for package in testing_req_fh.readlines():
         testing_requirements.append(package)
+
+dev_requirements = []
+with open('requirements-dev.txt', encoding='utf-8') as dev_req_fh:
+    for package in dev_req_fh.readlines():
+        dev_requirements.append(package)
 
 setup(
     # Basic info
@@ -40,7 +45,7 @@ setup(
     author_email='rob@stackzilla.dev',
     url='https://github.com/Stackzilla/stackzilla',
     description='An ORM for your application stack.',
-    long_description=open('README.md').read(),
+    long_description=open('README.md', encoding='utf-8').read(),
     license='GNU Affero General Public License v3',
     classifiers=[
         'Development Status :: 3 - Alpha',
@@ -68,7 +73,8 @@ setup(
     namespace_packages=['stackzilla'],
     install_requires=install_requirements,
     extras_require={
-        'testing': testing_requirements,
+        'test': testing_requirements,
+        'dev': dev_requirements,
     },
 
     # Data files
