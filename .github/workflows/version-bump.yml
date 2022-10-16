@@ -11,8 +11,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v3
-      persist-credentials: false
-      token: ${{ secrets.STACKZILLA_GITHUB_ACTION_PAT }}
+      with:
+        persist-credentials: false
+        token: ${{ secrets.STACKZILLA_GITHUB_ACTION_PAT }}
     - name: Bump version
       uses: remorses/bump-version@js
       with:
