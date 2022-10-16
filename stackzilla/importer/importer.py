@@ -57,7 +57,6 @@ class Importer(BaseImporter):
 
                 # If a package root is in use, strip it off before inserting it into the package cache
                 if self._package_root:
-                    #package_name = package_name.removeprefix(f'{self._package_root}.')
                     package_name = package_name.replace(self._package_root, '.')
 
                 self._packages[package_name] = package
