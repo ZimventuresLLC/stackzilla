@@ -10,7 +10,7 @@ from stackzilla.database.exceptions import AttributeNotFound, ResourceNotFound
 from stackzilla.logging.core import CoreLogger
 from stackzilla.resource.exceptions import ResourceVerifyError
 from stackzilla.utils.constants import DB_BP_PREFIX
-
+from stackzilla.utils.string import removeprefix
 
 @dataclass
 class AttributeModified:
@@ -49,7 +49,7 @@ class StackzillaResource:
 
         # Optionally remove the '..' prefix
         if remove_prefix:
-            path = path.removeprefix('..')
+            path = removeprefix(string=path, prefix='..')
 
         return path
 

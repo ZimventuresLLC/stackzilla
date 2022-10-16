@@ -6,7 +6,7 @@ from typing import List, Optional, Type
 
 from stackzilla.database.base import StackzillaDB
 from stackzilla.importer.base import BaseImporter, ModuleInfo
-
+from stackzilla.utils.string import removeprefix
 
 class DatabaseImporter(BaseImporter):
     """Class to manage the import of a blueprint from the Stackzilla database."""
@@ -68,7 +68,7 @@ class DatabaseImporter(BaseImporter):
 
             # If the package root is in use, strip it off of the module path before using it as the cache index
             if self._package_root:
-                module_name = module_name.removeprefix(f'{self._package_root}.')
+                module_name = removeprefix(string=module_name, prefix=f'{self._package_root}.')
 
             # Prepend '..' for the lookup
             module_lookup_name = module_name
@@ -155,7 +155,7 @@ class DatabaseImporter(BaseImporter):
             # Save the package to the cache
             package_name: str = module_name
             if self._package_root:
-                package_name = package_name.removeprefix(f'{self._package_root}.')
+                package_name = removeprefix(string=package_name, prefix=f'{self._package_root}.')
 
             self._packages[package_name] = module
             self.on_package_found(package=module)
