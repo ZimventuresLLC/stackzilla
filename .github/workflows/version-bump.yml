@@ -16,4 +16,5 @@ jobs:
       with:
           version_file: ./VERSION
       env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # Uses a personal access token (PAT) to bypass branch protection checks
+          GITHUB_TOKEN: ${{ secrets.STACKZILLA_GITHUB_ACTION_PAT }}
