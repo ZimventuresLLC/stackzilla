@@ -8,6 +8,19 @@ FROM mcr.microsoft.com/vscode/devcontainers/python:0-${VARIANT}
 ARG NODE_VERSION="none"
 RUN if [ "${NODE_VERSION}" != "none" ]; then su vscode -c "umask 0002 && . /usr/local/share/nvm/nvm.sh && nvm install ${NODE_VERSION} 2>&1"; fi
 
+# Install Ruby
+RUN sudo apt update
+RUN sudo apt install ruby-full build-essential zlib1g-dev
+
+RUN echo '# Install Ruby Gems to ~/gems' >> ~/.bashrc
+RUN echo 'export GEM_HOME="$HOME/gems"' >> ~/.bashrc
+RUN echo 'export PATH="$HOME/gems/bin:$PATH"' >> ~/.bashrc
+RUN source ~/.bashrc
+
+# Install Jekyll and Bundler
+# https://jekyllrb.com/
+RUN gem install jekyll bundler
+
 # [Optional] If your pip requirements rarely change, uncomment this section to add them to the image.
 # COPY requirements.txt /tmp/pip-tmp/
 # RUN pip3 --disable-pip-version-check --no-cache-dir install -r /tmp/pip-tmp/requirements.txt \
