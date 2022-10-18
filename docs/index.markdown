@@ -3,7 +3,7 @@ layout: home
 ---
 
 <div class="container text-center">
-    <a href="/">
+    <a href='{{ "/" | relative_url }}'>
         <img src='{{ "/assets/images/zilla_and_blocks_with_text.png" | relative_url }}' alt="Stackzilla logo" style="margin-bottom: 2em;" width="512">
     </a>
     <h1 class="display-3">An Application ORM for Python Developers.</h1>
