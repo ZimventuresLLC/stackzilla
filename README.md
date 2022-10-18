@@ -1,5 +1,9 @@
 # Stackzilla
 
+<p align="center">
+    <img src="https://github.com/Stackzilla/stackzilla/blob/main/docs/assets/images/zilla_and_blocks.png?raw=true"  alt="stackzilla" width="500"/>
+</p>
+
 [![codecov](https://codecov.io/gh/Stackzilla/stackzilla/branch/main/graph/badge.svg?token=SJQBB59GJ7)](https://codecov.io/gh/Stackzilla/stackzilla)
 
 Stackzilla is a Python ORM for managing application infrastructure and software. Stackzilla's object-oriented design allows for complete customization by the developer, if that level of customization is needed. For simpler deployments, Stackzilla offers an incredibly easy interface for Python developers to work with.
