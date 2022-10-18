@@ -2,9 +2,7 @@
 # Code coveraeg analysis
 ###############################
 name: Code Coverage Analysis
-
-on:
-  workflow_dispatch:
+on: [push, pull_request, workflow_dispatch]
 
 jobs:
   cocde_coverage:
