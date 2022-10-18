@@ -17,7 +17,6 @@ layout: home
         </div>
         <div class="col">
             <img src='{{ "/assets/images/github/GitHub-Mark-32px.png" | relative_url }}' alt="GitHub logo">
-
             <span class="h4 align-middle">
                 <a href="https://github.com/Stackzilla/stackzilla/" style="text-decoration: none;">
                     Star Stackzilla on GitHub
