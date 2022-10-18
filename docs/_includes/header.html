@@ -9,17 +9,17 @@
 
     <ul class="navbar-nav ms-auto">
       <li class="nav-item active">
-        <a class="nav-link" href="/">Home</a>
+        <a class="nav-link" href='{{"/" | relative_url }}'>Home</a>
       </li>
       <li class="nav-item">
-        <a class="nav-link" href="/getting-started/">Getting Started</a>
+        <a class="nav-link" href='{{"/getting-started/" | relative_url }}'>Getting Started</a>
       </li>
       <li class="nav-item dropdown">
         <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
           Documentation
         </a>
         <div class="dropdown-menu" aria-labelledby="navbarDropdown">
-          <a class="dropdown-item" href="/getting-started/">Getting Started</a>
+          <a class="dropdown-item" href='{{"/getting-started/" | relative_url }}'>Getting Started</a>
           <a class="dropdown-item" href="#">End-User Guides</a>
           <a class="dropdown-item" href="#">Writing a Provider</a>
           <a class="dropdown-item" href="#">Developing for Stackzilla</a>
@@ -28,7 +28,7 @@
         </div>
       </li>
       <li class="nav-item">
-        <a class="nav-link" href="/releases/">Releases</a>
+        <a class="nav-link" href=' {{"/releases/" | relative_url }}'>Releases</a>
       </li>
     </ul>
 
