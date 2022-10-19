@@ -1,7 +1,7 @@
 # Stackzilla
 
 <p align="center">
-    <img src='{{"https://github.com/Stackzilla/stackzilla/blob/main/docs/assets/images/zilla_and_blocks.png?raw=true" | relative_url }}'  alt="stackzilla" width="500"/>
+    <img src="https://github.com/Stackzilla/stackzilla/blob/main/docs/assets/images/zilla_and_blocks.png?raw=true"  alt="stackzilla" width="500"/>
 </p>
 
 [![codecov](https://codecov.io/gh/Stackzilla/stackzilla/branch/main/graph/badge.svg?token=SJQBB59GJ7)](https://codecov.io/gh/Stackzilla/stackzilla)
