@@ -16,6 +16,7 @@ from stackzilla.resource import AttributeModified, StackzillaResource
 from stackzilla.utils.constants import DB_BP_PREFIX
 from stackzilla.utils.string import removeprefix
 
+
 class StackzillaDiffResult(Enum):
     """Enum for the available results from diffing either a resource or parameter."""
 

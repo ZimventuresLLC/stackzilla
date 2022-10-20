@@ -8,6 +8,7 @@ from stackzilla.database.base import StackzillaDB
 from stackzilla.importer.base import BaseImporter, ModuleInfo
 from stackzilla.utils.string import removeprefix
 
+
 class DatabaseImporter(BaseImporter):
     """Class to manage the import of a blueprint from the Stackzilla database."""
 

@@ -3,8 +3,10 @@ from typing import Dict, List
 
 from colorama import Fore, Style
 
+
 class ResourceCreateFailure(Exception):
     """Raised when a resource creation fails."""
+
     def __init__(self, resource_name: str, reason: str, *args: object) -> None:
         """Default constructor."""
         super().__init__(*args)
