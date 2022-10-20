@@ -183,6 +183,11 @@ class StackzillaDiff:
             # Get the diffs for each resource in the phase
             for resource in phase:
                 obj = resource()
+
+                # Need to load the resource from the database so that any dynamic attributes are present
+                # NOTE: If the resource is not in the database, no big deal, we'll just silently fail
+                obj.load_from_db(silent_fail=True)
+
                 diff: StackzillaResourceDiff = self._result.resource_diffs[obj.path()]
 
                 if diff.result == StackzillaDiffResult.CONFLICT:
@@ -396,6 +401,8 @@ class StackzillaDiff:
                     # Mark the entire resource-to-resource diff as needing a rebuild
                     if src_attributes[attr_name].modify_rebuild:
                         result = StackzillaDiffResult.REBUILD_REQUIRED
+                    elif src_attributes[attr_name].dynamic:
+                        continue
                     else:
                         # Mark the resource-to-resource diff as CONFLICT, assuming the current diff result is not REBUILD.
                         if result != StackzillaDiffResult.REBUILD_REQUIRED:
@@ -437,6 +444,8 @@ class StackzillaDiff:
                     # Mark the entire resource-to-resource diff as needing a rebuild
                     if dest_attributes[attr_name].modify_rebuild:
                         result = StackzillaDiffResult.REBUILD_REQUIRED
+                    elif dest_attributes[attr_name].dynamic:
+                        continue
                     else:
                         # Mark the resource-to-resource diff as CONFLICT, assuming the current diff result is not REBUILD.
                         if result != StackzillaDiffResult.REBUILD_REQUIRED:

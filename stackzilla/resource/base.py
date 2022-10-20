@@ -192,16 +192,21 @@ class StackzillaResource:
 
             # Invoke the modify method
             method(previous_value=previous_value, new_value=new_value)
-
             return True
 
         return False
 
-    def load_from_db(self):
+    def load_from_db(self, silent_fail: bool=False):
         """Import all of the attribute values from the database."""
-        for attribute_name in self.attributes:
-            value = StackzillaDB.db.get_attribute(resource=self, name=attribute_name)
-            setattr(self, attribute_name, value)
+        try:
+            for attribute_name in self.attributes:
+                value = StackzillaDB.db.get_attribute(resource=self, name=attribute_name)
+                setattr(self, attribute_name, value)
+        except ResourceNotFound as err:
+            if silent_fail is True:
+                return
+
+            raise err
 
     def create_in_db(self):
         """Persist the resource, and its attributes, in the database."""
