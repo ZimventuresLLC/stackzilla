@@ -14,6 +14,8 @@ class Resource(StackzillaResource):
     """Demo resource."""
     required = StackzillaAttribute(required=True)
     default_int = StackzillaAttribute(required=False, default=42)
+    list_attr = StackzillaAttribute(required=False)
+    dict_attr = StackzillaAttribute(required=False)
 
     @classmethod
     def version(cls) -> ResourceVersion:
@@ -33,6 +35,8 @@ class MyResource(Resource):
         super().__init__()
         self.required = "Stackzilla"
         self.default_int = 88
+        self.list_attr = ['alpha', 'beta']
+        self.dict_attr = {'alpha': 1, 'beta': 2}
 
 class MyOtherResource(Resource):
     """Override the default required string"""

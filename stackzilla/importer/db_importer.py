@@ -8,6 +8,7 @@ from stackzilla.database.base import StackzillaDB
 from stackzilla.importer.base import BaseImporter, ModuleInfo
 from stackzilla.utils.string import removeprefix
 
+
 class DatabaseImporter(BaseImporter):
     """Class to manage the import of a blueprint from the Stackzilla database."""
 
@@ -103,6 +104,10 @@ class DatabaseImporter(BaseImporter):
 
             # We don't know how to handle this module
             if path is None and name != f'.{self._package_root}':
+                return None
+
+            # If the path is a list, it's holding a file path. Since we only care about DB modules, skip it!
+            if isinstance(path, list):
                 return None
 
             # Save this to use when setting __package__ during module initialization

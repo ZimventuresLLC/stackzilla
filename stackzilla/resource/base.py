@@ -12,6 +12,7 @@ from stackzilla.resource.exceptions import ResourceVerifyError
 from stackzilla.utils.constants import DB_BP_PREFIX
 from stackzilla.utils.string import removeprefix
 
+
 @dataclass
 class AttributeModified:
     """Data structure to store attribute modification data."""
