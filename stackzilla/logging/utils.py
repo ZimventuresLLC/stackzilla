@@ -34,7 +34,7 @@ LOGGING_CONFIG = {
         },
         'stackzilla.importer': {
             'handlers': ['core'],
-            'level': 'DEBUG',
+            'level': 'INFO',
             'propagate': False
         },
         'stackzilla.StackzillaSQLiteDB': {
@@ -48,6 +48,11 @@ LOGGING_CONFIG = {
             'propagate': False
         },
         'stackzilla-test:volume': {
+            'handlers': ['provider'],
+            'level': 'DEBUG',
+            'propagate': False
+        },
+         'linode.volume': {
             'handlers': ['provider'],
             'level': 'DEBUG',
             'propagate': False

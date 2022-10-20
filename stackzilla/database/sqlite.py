@@ -1,7 +1,9 @@
 """SQLite database provider."""
+import base64
 import importlib
 import json
 import os
+import pickle
 import sqlite3
 import sys
 from sqlite3 import Connection, Cursor
@@ -347,9 +349,10 @@ class StackzillaSQLiteDB(StackzillaDBBase):
                                                 "name",
                                                 "value")
                                                 VALUES (:resource_id, :name, :value)"""
+
         insert_data = {
             'name': name,
-            'value': value,
+            'value': self._value_encode(value),
             'resource_id': resource_id
         }
 
@@ -357,7 +360,9 @@ class StackzillaSQLiteDB(StackzillaDBBase):
             self.connection.execute(sql, insert_data)
             self.connection.commit()
         except sqlite3.IntegrityError as exc:
-            raise CreateAttributeFailure() from exc
+            raise CreateAttributeFailure(str(exc)) from exc
+        except sqlite3.InterfaceError as exc:
+            raise CreateAttributeFailure(str(exc)) from exc
 
     def delete_attribute(self, resource: StackzillaResource, name: str):
         """Delete an attribute previously added to the database.
@@ -394,7 +399,7 @@ class StackzillaSQLiteDB(StackzillaDBBase):
                         WHERE id=:attribute_id"""
 
         update_data = {
-            "value": value,
+            "value": self._value_encode(value),
             "attribute_id": attribute_id,
             "name": name
         }
@@ -424,7 +429,7 @@ class StackzillaSQLiteDB(StackzillaDBBase):
         if row is None:
             raise AttributeNotFound
 
-        return row['value']
+        return self._value_decode(row['value'])
 
     def create_blueprint_module(self, path: str, data: Optional[str] = None) -> None:
         """Create a blueprint module within the database.
@@ -600,6 +605,16 @@ class StackzillaSQLiteDB(StackzillaDBBase):
             results.append(row['path'])
 
         return results
+
+    def _value_encode(self, value: Any) -> str:
+        """Pickle and base64 encode a value."""
+        pickled_val = pickle.dumps(value)
+        return base64.encodebytes(pickled_val).decode('ascii')
+
+    def _value_decode(self, value: str) -> Any:
+        """base64 decode and unpickle the value."""
+        decoded_val = base64.decodebytes(value.encode("ascii"))
+        return pickle.loads(decoded_val)
 
     def _get_blueprint_package_id(self, path: str) -> int:
         """Fetch the row ID for a given blueprint package, based on the provided path.

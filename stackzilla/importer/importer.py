@@ -102,11 +102,17 @@ class Importer(BaseImporter):
         if path:
             # Ignore Stackzilla internals and any providers
             if name.startswith('stackzilla.'):
+                self._logger.debug(f'Skipping {name}')
                 return None
 
             # We don't know how to handle this module
             if path is None and name != f'.{self._package_root}':
                 return None
+
+            # If the path is a list, it's holding a file path
+            if isinstance(path, list):
+                if path[0].startswith(self.bp_path) is False:
+                    return None
 
             # Save this to use when setting __package__ during module initialization
             self._current_spec_path = path

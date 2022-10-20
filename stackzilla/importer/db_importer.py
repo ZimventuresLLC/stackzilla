@@ -105,6 +105,10 @@ class DatabaseImporter(BaseImporter):
             if path is None and name != f'.{self._package_root}':
                 return None
 
+            # If the path is a list, it's holding a file path. Since we only care about DB modules, skip it!
+            if isinstance(path, list):
+                return None
+
             # Save this to use when setting __package__ during module initialization
             self._current_spec_path = path
             module_spec = ModuleSpec(name, self)

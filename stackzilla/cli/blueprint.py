@@ -144,13 +144,13 @@ def delete():
         return
 
     # Show the blueprint
-
     graph: Graph = db_blueprint.build_graph()
     phases: List[List[Type[object]]] = graph.resolve(reverse=True)
 
     for phase in phases:
         for resource in phase:
             obj = resource()
+            obj.load_from_db()
             obj.delete()
 
     # Delete all of the blueprint information from the database
