@@ -99,6 +99,13 @@ class StackzillaResource:
             if attribute.dynamic and attr_value is not None:
                 verify_error_info.add_attribute_error(name=attr_name, error='Attribute is dynamic value can not be specified.')
 
+            if attribute.number_range and attribute.number_range.in_range(attr_value) is False:
+                attr_min = attribute.number_range.min
+                attr_max = attribute.number_range.max
+
+                verify_error_info.add_attribute_error(
+                    name=attr_name, error=f'Attribute value ({attr_value}) not in range [{attr_min} - {attr_max}].')
+
         if verify_error_info.attribute_errors:
             raise verify_error_info
 

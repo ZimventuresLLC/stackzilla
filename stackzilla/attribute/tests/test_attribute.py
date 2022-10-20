@@ -1,6 +1,7 @@
 import inspect
 
 from stackzilla.attribute import StackzillaAttribute
+from stackzilla.utils.numbers import StackzillaRange
 
 
 class Class:
@@ -11,7 +12,7 @@ class Class:
     default_int = StackzillaAttribute(default=42)
     default_float = StackzillaAttribute(default=88.0)
     default_string = StackzillaAttribute(default='GREAT SCOTT!')
-
+    range_arg = StackzillaAttribute(number_range=StackzillaRange(min=42, max=88), default=50)
 
 class Instance:
     """ The parameters in this class are defined in the constructor as instance variables. """
@@ -31,7 +32,6 @@ class MyClass(Class):
         super().__init__()
         self.default_float = 69.0
         self.required_arg = "Stackzilla"
-
 
 
 class ChildObject(Class):
@@ -113,7 +113,8 @@ def test_programatic_access():
             attribute_count += 1
             print(f'{name} : {my_class.__dict__.get(name, value.default)}')
 
-    assert attribute_count == 6
+    assert attribute_count == 7
     assert my_class.required_arg == "Stackzilla"
     assert my_class.default_string == "GREAT SCOTT!"
     assert my_class.default_int == 42
+    assert my_class.range_arg == 50

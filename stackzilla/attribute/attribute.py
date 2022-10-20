@@ -3,13 +3,16 @@
 
 from typing import Any, List
 
+from stackzilla.utils.numbers import StackzillaRange
 
+
+# pylint: disable=too-many-instance-attributes
 class StackzillaAttribute:
     """Descriptor class for all blueprint attributes."""
 
     # pylint: disable=too-many-arguments
     def __init__(self, required: bool = False, default: Any = None, choices: List[Any] = None,
-                 modify_rebuild: bool = False, dynamic: bool = False, secret: bool = False):
+                 modify_rebuild: bool = False, dynamic: bool = False, secret: bool = False, number_range: StackzillaRange = None):
         """Constructor for the attribute.
 
         Args:
@@ -17,6 +20,7 @@ class StackzillaAttribute:
             default (Any, optional): The value for the parameter if none is specified. Defaults to None.
             choices (List[Any], optional): List of valid values for the parameter. Defaults to None.
             modify_rebuild (bool, optional): Rebuild the resource if true and parameter is modified. Defaults to False.
+            number_range (StackzillaRange, optional): Minimum and maximum allowable int or float values. Defaults to None.
             dynamic (bool, optional): The parameter is set programatically and not by the user. Defaults to False.
             secret (bool, optional): Parameter holds sensitive information. Defaults to False.
         """
@@ -24,6 +28,7 @@ class StackzillaAttribute:
         self.default = default
         self.dynamic = dynamic
         self.modify_rebuild = modify_rebuild
+        self.number_range = number_range
         self.required = required
         self.secret = secret
 
