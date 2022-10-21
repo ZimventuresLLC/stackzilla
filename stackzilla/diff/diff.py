@@ -125,13 +125,13 @@ class StackzillaResourceDiff:
     def print(self, buffer: StringIO) -> None:
         """Print the diff results to the buffer."""
         if self.result == StackzillaDiffResult.DELETED:
-            buffer.write(Fore.RED + f'DELETING [{self.path()}]\n')
+            buffer.write(Fore.RED + f'[{self.path()}] DELETING\n')
         elif self.result == StackzillaDiffResult.NEW:
-            buffer.write(Fore.GREEN + f'CREATING [{self.path()}]\n')
+            buffer.write(Fore.GREEN + f'[{self.path()}] CREATING\n')
         elif self.result == StackzillaDiffResult.REBUILD_REQUIRED:
-            buffer.write(Fore.YELLOW + 'REBUILD REQUIRED. See attributes marked with "!!"\n')
+            buffer.write(Fore.RED + f'[{self.path()}] REBUILD REQUIRED. See attributes marked with "!!"\n')
         elif self.result == StackzillaDiffResult.CONFLICT:
-            buffer.write(Fore.YELLOW + f'UPDATING [{self.path()}]\n')
+            buffer.write(Fore.YELLOW + f'[{self.path()}] UPDATING\n')
         elif self.result == StackzillaDiffResult.SAME:
             return
         else:
@@ -227,7 +227,9 @@ class StackzillaDiff:
 
                     if unhandled_attributes:
                         raise UnhandledAttributeModifications(unhandled_attributes)
-
+                elif diff.result == StackzillaDiffResult.REBUILD_REQUIRED:
+                    diff.dest_resource.delete()
+                    diff.src_resource.create()
                 elif diff.result == StackzillaDiffResult.DELETED:
                     diff.dest_resource.delete()
                 elif diff.result == StackzillaDiffResult.NEW:
@@ -308,7 +310,7 @@ class StackzillaDiff:
                     continue
 
                 if attr_diff_result in [StackzillaDiffResult.CONFLICT, StackzillaDiffResult.REBUILD_REQUIRED]:
-                    result = StackzillaDiffResult.CONFLICT
+                    result = attr_diff_result
                     diffs[resource_name] = StackzillaResourceDiff(src_resource=src_resource,
                                                                 dest_resource=dest_resource,
                                                                 result=result,
