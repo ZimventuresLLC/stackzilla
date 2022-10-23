@@ -57,6 +57,11 @@ LOGGING_CONFIG = {
             'level': 'DEBUG',
             'propagate': False
         },
+         'linode.instance': {
+            'handlers': ['provider'],
+            'level': 'DEBUG',
+            'propagate': False
+        },
         '__main__': {  # if __name__ == '__main__'
             'handlers': ['core'],
             'level': 'DEBUG',

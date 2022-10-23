@@ -1,7 +1,7 @@
 """Descriptor which defines any attribute for a Resource class."""
 # See https://docs.python.org/3/glossary.html#term-descriptor for details on descriptors
 
-from typing import Any, List
+from typing import Any, List, Type
 
 from stackzilla.utils.numbers import StackzillaRange
 
@@ -11,7 +11,7 @@ class StackzillaAttribute:
     """Descriptor class for all blueprint attributes."""
 
     # pylint: disable=too-many-arguments
-    def __init__(self, required: bool = False, default: Any = None, choices: List[Any] = None,
+    def __init__(self, required: bool = False, default: Any = None, choices: List[Any] = None, types: List[Type] = None,
                  modify_rebuild: bool = False, dynamic: bool = False, secret: bool = False, number_range: StackzillaRange = None):
         """Constructor for the attribute.
 
@@ -19,6 +19,7 @@ class StackzillaAttribute:
             required (bool, optional): Indicates if the attribute must be defined. Defaults to False.
             default (Any, optional): The value for the parameter if none is specified. Defaults to None.
             choices (List[Any], optional): List of valid values for the parameter. Defaults to None.
+            types (List[Type], optional): List of types that are allowed for the attribute
             modify_rebuild (bool, optional): Rebuild the resource if true and parameter is modified. Defaults to False.
             number_range (StackzillaRange, optional): Minimum and maximum allowable int or float values. Defaults to None.
             dynamic (bool, optional): The parameter is set programatically and not by the user. Defaults to False.
@@ -31,6 +32,7 @@ class StackzillaAttribute:
         self.number_range = number_range
         self.required = required
         self.secret = secret
+        self.types = types
 
     def __set_name__(self, owner, name):
         """Called by Python to let the descriptor class know the parameter name holding this class."""
