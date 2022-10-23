@@ -70,9 +70,6 @@ class StackzillaBlueprint:
         Raises:
             BlueprintVerifyFailure: Raised if any of the resources raise a verification error
         """
-        # Will raise CircularDependency if the graph can not be resolved
-        graph = self.build_graph()
-        graph.resolve()
 
         # Verify all of the resources
         resource_verify_errors: List[ResourceVerifyError] = []
@@ -86,6 +83,10 @@ class StackzillaBlueprint:
         # Assemble the individual resource verify errors into a single exception
         if resource_verify_errors:
             raise BlueprintVerifyFailure(errors=resource_verify_errors)
+
+        # Will raise CircularDependency if the graph can not be resolved
+        graph = self.build_graph()
+        graph.resolve()
 
     def build_graph(self) -> Graph:
         """Build a dependency graph from all of the classes that were previously imported."""

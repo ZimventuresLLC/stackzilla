@@ -106,6 +106,17 @@ class StackzillaResource:
                 verify_error_info.add_attribute_error(
                     name=attr_name, error=f'Attribute value ({attr_value}) not in range [{attr_min} - {attr_max}].')
 
+            # Make sure that the attribute type is allowed
+            if attribute.types and attr_value:
+                for type_check in attribute.types:
+                    if inspect.isclass(attr_value):
+                        class_type = attr_value
+                    else:
+                        class_type = type(attr_value)
+
+                    if issubclass(class_type, type_check) is False:
+                        verify_error_info.add_attribute_error(name=attr_name, error=f'value of type {type(attr_value)} not allowed')
+
         if verify_error_info.attribute_errors:
             raise verify_error_info
 
