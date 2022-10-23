@@ -70,7 +70,6 @@ class StackzillaBlueprint:
         Raises:
             BlueprintVerifyFailure: Raised if any of the resources raise a verification error
         """
-
         # Verify all of the resources
         resource_verify_errors: List[ResourceVerifyError] = []
         for resource in self.resources.values():
