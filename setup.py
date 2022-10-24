@@ -62,12 +62,13 @@ setup(
 
     # Packages and depencies
     package_dir={'stackzilla': 'stackzilla'},
-    packages=find_namespace_packages(include=['stackzilla.blueprint',
-                                              'stackzilla.cli',
-                                              'stackzilla.database',
-                                              'stackzilla.provider'
-                                              'stackzilla.resource'
-                                              'stackzilla.utils']),
+    packages=['stackzilla.blueprint',
+              'stackzilla.cli',
+              'stackzilla.database',
+              'stackzilla.provider.null',
+              'stackzilla.resource',
+              'stackzilla.utils'],
+
     python_requires='>3.6',
     include_package_data=True,
     install_requires=install_requirements,

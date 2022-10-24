@@ -7,7 +7,7 @@ from typing import Any, Dict, List
 from stackzilla.attribute import StackzillaAttribute
 from stackzilla.database.base import StackzillaDB
 from stackzilla.database.exceptions import AttributeNotFound, ResourceNotFound
-from stackzilla.logging.core import CoreLogger
+from stackzilla.logger.core import CoreLogger
 from stackzilla.resource.exceptions import ResourceVerifyError
 from stackzilla.utils.constants import DB_BP_PREFIX, DISK_BP_PREFIX
 from stackzilla.utils.string import removeprefix

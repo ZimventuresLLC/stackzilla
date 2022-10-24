@@ -24,7 +24,10 @@ jobs:
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
-        pip install .[test]
+        pip install -e .
+        pip install -e .[test]
+        pip install -e .[dev]
+        export PYTHONPATH="$PYTHONPATH:./"
     - name: Running iSort
       run: |
         isort ./stackzilla/
@@ -35,5 +38,4 @@ jobs:
 
     - name: Running pylint
       run: |
-        # pylint $(git ls-files '*.py')
-        pylint ./stackzilla/
+        pylint ./stackzilla

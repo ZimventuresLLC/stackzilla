@@ -1,7 +1,7 @@
 """Module for Stackzilla core component logging."""
 from typing import Optional
 
-from stackzilla.logging.base import BaseLogger
+from stackzilla.logger.base import BaseLogger
 
 
 class CoreLogger(BaseLogger):

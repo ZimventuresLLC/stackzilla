@@ -1,4 +1,6 @@
 """Testing."""
+# pylint: skip-file
+
 from ..a.a import A
 from ..root_module import Root
 

@@ -2,7 +2,7 @@
 
 from typing import Optional
 
-from stackzilla.logging.base import BaseLogger
+from stackzilla.logger.base import BaseLogger
 
 
 class ProviderLogger(BaseLogger):

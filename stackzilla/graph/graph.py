@@ -3,7 +3,7 @@ from dataclasses import dataclass
 from typing import Dict, List, Type
 
 from stackzilla.graph.exceptions import CircularDependency
-from stackzilla.logging.core import CoreLogger
+from stackzilla.logger.core import CoreLogger
 
 
 @dataclass

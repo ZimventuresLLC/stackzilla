@@ -8,7 +8,7 @@ from stackzilla.cli.metadata import metadata
 from stackzilla.cli.options import namespace_option
 from stackzilla.database.base import StackzillaDB
 from stackzilla.database.exceptions import DatabaseExists
-from stackzilla.logging.utils import setup_logging
+from stackzilla.logger.utils import setup_logging
 
 
 @click.group(name='cli')
