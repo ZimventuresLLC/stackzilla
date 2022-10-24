@@ -26,6 +26,7 @@ jobs:
         python -m pip install --upgrade pip
         pip install -e .
         pip install .[test]
+        export PYTHONPATH="$PYTHONPATH:./"
     - name: Running iSort
       run: |
         isort ./stackzilla/
