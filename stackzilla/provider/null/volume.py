@@ -5,7 +5,9 @@ from stackzilla.attribute.attribute import StackzillaAttribute
 from stackzilla.logging.provider import ProviderLogger
 from stackzilla.resource.base import ResourceVersion, StackzillaResource
 from stackzilla.resource.exceptions import ResourceCreateFailure
+
 from .instance import Instance
+
 
 class Volume(StackzillaResource):
     """Dummy volume resource."""

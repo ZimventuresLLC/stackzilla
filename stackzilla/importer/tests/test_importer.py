@@ -1,7 +1,7 @@
 """Ensure that basic blueprint import functionality works."""
 import logging
-from pathlib import Path
 import pickle
+from pathlib import Path
 from unittest.mock import Mock
 
 import pytest

@@ -23,7 +23,7 @@ class StackzillaBlueprint:
         Args:
             path (str): Filesystem path to the top-level blueprint directory.
                         If None, the blueprint will be loaded from the database.
-            python_root (str): The Python package root to load the database blueprint into. Can NOT be used when path is specified.
+            python_root (str): The Python package root to load the DB blueprint into. Can NOT be used when path is specified.
         """
         super().__init__()
 

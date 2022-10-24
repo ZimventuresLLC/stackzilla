@@ -11,6 +11,7 @@ from stackzilla.diff import StackzillaDiff, StackzillaDiffResult
 from stackzilla.graph import Graph
 from stackzilla.utils.constants import DISK_BP_PREFIX
 
+
 @click.group(name='blueprint')
 def blueprint():
     """Command group for all blueprint CLI commands."""

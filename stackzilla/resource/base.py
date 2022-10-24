@@ -41,11 +41,13 @@ class ResourceVersion:
 ######################################################################################
 class SZMeta(type):
     """Metaclass which provides custom operators for the StackzillaResource class."""
+
     def __repr__(cls) -> str:
+        """Return the normalized path as the string represntation of the class."""
         return cls.path()
 
     def __eq__(cls, other: 'StackzillaResource') -> bool:
-
+        """Perform an equality check using the path of the resource."""
         try:
             return cls.path() == other.path()
         except AttributeError:
@@ -57,7 +59,7 @@ class SZMeta(type):
         return id(cls)
 
 
-class StackzillaResource(object, metaclass=SZMeta):
+class StackzillaResource(metaclass=SZMeta):
     """Base class for all user defined resources."""
 
     def __init__(self) -> None:

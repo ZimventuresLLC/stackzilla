@@ -6,6 +6,7 @@ from stackzilla.logging.provider import ProviderLogger
 from stackzilla.resource.base import ResourceVersion, StackzillaResource
 from stackzilla.resource.exceptions import ResourceCreateFailure
 
+
 class Instance(StackzillaResource):
     """Dummy instance resource."""
 
