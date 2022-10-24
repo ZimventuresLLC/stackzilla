@@ -9,7 +9,7 @@ from stackzilla.database.base import StackzillaDB
 from stackzilla.database.exceptions import AttributeNotFound, ResourceNotFound
 from stackzilla.logging.core import CoreLogger
 from stackzilla.resource.exceptions import ResourceVerifyError
-from stackzilla.utils.constants import DB_BP_PREFIX
+from stackzilla.utils.constants import DB_BP_PREFIX, DISK_BP_PREFIX
 from stackzilla.utils.string import removeprefix
 
 
@@ -32,12 +32,40 @@ class ResourceVersion:
     build: int
     name: str
 
-class StackzillaResource:
+######################################################################################
+# The SZMeta class provides an equality operator for when StackzillaResource classes
+# are compared (obj == obj2). Normally, Python would simply use the object's id.
+# For our case, we want to use the normalized Python path (remove the prefix).
+# In addition, the __repr__ class will allow any object to have str() applied to it
+# and the normalized Python path will be returned.
+######################################################################################
+class SZMeta(type):
+    """Metaclass which provides custom operators for the StackzillaResource class."""
+
+    def __repr__(cls) -> str:
+        """Return the normalized path as the string represntation of the class."""
+        return cls.path()
+
+    def __eq__(cls, other: 'StackzillaResource') -> bool:
+        """Perform an equality check using the path of the resource."""
+        try:
+            return cls.path() == other.path()
+        except AttributeError:
+            # Raised when .path() doesn't exist -> which it won't for obects that aren't StackzillaResource types.
+            return False
+
+    def __hash__(cls) -> int:
+        """Must be overridden any time __eq__ is overridden."""
+        return id(cls)
+
+
+class StackzillaResource(metaclass=SZMeta):
     """Base class for all user defined resources."""
 
     def __init__(self) -> None:
         """Base constructor for all Stackzilla resource types."""
         self._core_logger = CoreLogger(component='resource')
+
 
     @classmethod
     def path(cls, remove_prefix: bool=False) -> str:
@@ -47,6 +75,9 @@ class StackzillaResource:
         # Always replace the DB prevfix
         if path.startswith(DB_BP_PREFIX):
             path = path.replace(DB_BP_PREFIX, '.')
+
+        if path.startswith(DISK_BP_PREFIX):
+            path = path.replace(DISK_BP_PREFIX, '.')
 
         # Optionally remove the '..' prefix
         if remove_prefix:

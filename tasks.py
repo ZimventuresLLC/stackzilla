@@ -4,6 +4,11 @@ from invoke import task
 source_root = 'stackzilla'
 
 @task
+def clean(c):
+    """Clean out any build files or Python caches."""
+    c.run('py3clean .')
+
+@task
 def lint(c):
     """Perform linting duties on the codebase."""
     c.run(f'isort {source_root}')

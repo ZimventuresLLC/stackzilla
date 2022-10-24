@@ -4,14 +4,14 @@ from typing import List
 from stackzilla.attribute.attribute import StackzillaAttribute
 from stackzilla.logging.provider import ProviderLogger
 from stackzilla.resource.base import ResourceVersion, StackzillaResource
+from stackzilla.resource.exceptions import ResourceCreateFailure
 
 
-class Volume(StackzillaResource):
-    """Dummy volume resource."""
+class Instance(StackzillaResource):
+    """Dummy instance resource."""
 
-    format = StackzillaAttribute(required=False, choices=['xfs', 'hdfs', 'fat'], default='xfs')
-    size = StackzillaAttribute(required=True)
-
+    type = StackzillaAttribute(required=True, choices=['large', 'medium', 'small'])
+    create_failure = False
     def __init__(self) -> None:
         """Default constructor that sets up logging."""
         super().__init__()
@@ -20,6 +20,10 @@ class Volume(StackzillaResource):
     def create(self) -> None:
         """Called when the resource is created."""
         self._logger.debug(message="Creating volume")
+
+        if self.create_failure:
+            raise ResourceCreateFailure(resource_name=self.path(), reason="tesing failure")
+
         return super().create()
 
     def depends_on(self) -> List['StackzillaResource']:

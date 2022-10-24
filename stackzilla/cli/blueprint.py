@@ -9,6 +9,7 @@ from stackzilla.blueprint.exceptions import BlueprintVerifyFailure
 from stackzilla.database.base import StackzillaDB
 from stackzilla.diff import StackzillaDiff, StackzillaDiffResult
 from stackzilla.graph import Graph
+from stackzilla.utils.constants import DISK_BP_PREFIX
 
 
 @click.group(name='blueprint')
@@ -136,8 +137,11 @@ def delete():
     """Delete the blueprint."""
     StackzillaDB.db.open()
 
-    # Load the blueprint from disk
-    db_blueprint = StackzillaBlueprint()
+    # Load the blueprint from the database
+    # NOTE: The disk blueprint is not being imported so we must import the database blueprint INTO the
+    # disk blueprint's python namespace root. That's because all of the resources are pickled before
+    # persistance FROM the disk blueprint's namespace.
+    db_blueprint = StackzillaBlueprint(python_root=DISK_BP_PREFIX)
     db_blueprint.load()
 
     if click.confirm('Delete blueprint?') is False:

@@ -1,5 +1,6 @@
 """Ensure that basic blueprint import functionality works."""
 import logging
+import pickle
 from pathlib import Path
 from unittest.mock import Mock
 
@@ -164,3 +165,13 @@ def test_database_importer(database: StackzillaSQLiteDB):
         assert module_name in importer.modules
 
     assert len(db_importer.modules) == len(importer.modules)
+
+def test_pickling(database: StackzillaSQLiteDB):
+    test_bp = Path(__file__)
+    fixture_location = test_bp.parent / 'fixtures' / 'multiple_directories'
+
+    importer = Importer(path=str(fixture_location), class_filter=object, package_root='testing')
+    importer.load()
+
+    resource = importer.get_class(name='root_module.Root')
+    pickled_val = pickle.dumps(resource)

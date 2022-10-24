@@ -9,7 +9,7 @@ from stackzilla.importer.exceptions import NotLoaded
 from stackzilla.importer.importer import Importer
 from stackzilla.resource.base import StackzillaResource
 from stackzilla.resource.exceptions import ResourceVerifyError
-from stackzilla.utils.constants import DB_BP_PREFIX
+from stackzilla.utils.constants import DB_BP_PREFIX, DISK_BP_PREFIX
 
 
 class StackzillaBlueprint:
@@ -17,20 +17,31 @@ class StackzillaBlueprint:
 
     base_resource_type = StackzillaResource
 
-    def __init__(self, path: Optional[str] = None):
+    def __init__(self, path: Optional[str] = None, python_root=None):
         """Blueprint constructor.
 
         Args:
             path (str): Filesystem path to the top-level blueprint directory.
                         If None, the blueprint will be loaded from the database.
+            python_root (str): The Python package root to load the DB blueprint into. Can NOT be used when path is specified.
         """
         super().__init__()
 
+        if path and python_root:
+            raise RuntimeError('Can not define both python_root and path')
+
         if path:
-            self._importer = Importer(path=path, class_filter=StackzillaBlueprint.base_resource_type)
+            self._importer = Importer(path=path,
+                                      class_filter=StackzillaBlueprint.base_resource_type,
+                                      package_root=DISK_BP_PREFIX)
         else:
+
+            package_root = DB_BP_PREFIX
+            if python_root:
+                package_root = python_root
+
             self._importer = DatabaseImporter(
-                class_filter=StackzillaBlueprint.base_resource_type, package_root=DB_BP_PREFIX
+                class_filter=StackzillaBlueprint.base_resource_type, package_root=package_root
             )
 
     def load(self):
