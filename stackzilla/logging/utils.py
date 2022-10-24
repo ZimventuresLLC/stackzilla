@@ -34,7 +34,7 @@ LOGGING_CONFIG = {
         },
         'stackzilla.importer': {
             'handlers': ['core'],
-            'level': 'INFO',
+            'level': 'DEBUG',
             'propagate': False
         },
         'stackzilla.StackzillaSQLiteDB': {

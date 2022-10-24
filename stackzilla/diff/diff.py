@@ -9,11 +9,12 @@ from colorama import Fore, Style
 from stackzilla.attribute import StackzillaAttribute
 from stackzilla.blueprint.blueprint import StackzillaBlueprint
 from stackzilla.database.base import StackzillaDB
+from stackzilla.database.exceptions import ResourceNotFound
 from stackzilla.diff.exceptions import (NoDiffError,
                                         UnhandledAttributeModifications)
 from stackzilla.graph import Graph
 from stackzilla.resource import AttributeModified, StackzillaResource
-from stackzilla.utils.constants import DB_BP_PREFIX
+from stackzilla.utils.constants import DB_BP_PREFIX, DISK_BP_PREFIX
 from stackzilla.utils.string import removeprefix
 
 
@@ -46,7 +47,7 @@ class StackzillaAttributeDiff:
         if self.src_attribute.dynamic:
             return '<TBD>'
 
-        return self.src_value
+        return str(self.src_value)
 
     def filtered_dest_value(self) -> Any:
         """Fetch the destination value, filtering for secrets or dynamic values."""
@@ -56,7 +57,7 @@ class StackzillaAttributeDiff:
         if self.dest_attribute.dynamic:
             return '<TBD>'
 
-        return self.dest_value
+        return str(self.dest_value)
 
     def is_secret(self) -> bool:
         """Query if the attribute is a secret."""
@@ -119,6 +120,7 @@ class StackzillaResourceDiff:
         # ALWAYS Remove the leading '..' or DB prefix
         path = removeprefix(string=path, prefix='..')
         path = removeprefix(string=path, prefix=f'{DB_BP_PREFIX}.')
+        path = removeprefix(string=path, prefix=f'{DISK_BP_PREFIX}.')
 
         return path
 
@@ -177,6 +179,28 @@ class StackzillaDiff:
 
         # Raises CircularDependency if the graph can not be resolved
         phases = graph.resolve()
+
+        # Implementation Note
+        # The blueprint is purposefully being persisted to the database BEFORE it is applied.
+        # If a blueprint is partially created/modified, the resource & attribute tables will not
+        #  have the data but we need to know what the last blueprint used was.
+
+        # Check the destination blueprint for resources not in the source blueprint (deleted)
+        for resource_name in self._dest_blueprint.resources:
+            if resource_name not in self._src_blueprint.resources:
+                deleted_resource = self._dest_blueprint.resources[resource_name]()
+                deleted_resource.delete()
+                deleted_resource.delete_from_db()
+
+        # Dump all of the packages to the database
+        StackzillaDB.db.delete_all_blueprint_packages()
+        for package_name in self._src_blueprint.packages:
+            StackzillaDB.db.create_blueprint_package(path=package_name)
+
+        # Dump all of the modules to the databse
+        StackzillaDB.db.delete_all_blueprint_modules()
+        for module in self._src_blueprint.modules.values():
+            StackzillaDB.db.create_blueprint_module(path=module.path, data=module.data)
 
         for phase in phases:
 
@@ -239,22 +263,7 @@ class StackzillaDiff:
                 else:
                     raise RuntimeError('Unhandled state')
 
-        # Check the destination blueprint for resources not in the source blueprint (deleted)
-        for resource_name in self._dest_blueprint.resources:
-            if resource_name not in self._src_blueprint.resources:
-                deleted_resource = self._dest_blueprint.resources[resource_name]()
-                deleted_resource.delete()
-                deleted_resource.delete_from_db()
 
-        # Dump all of the packages to the database
-        StackzillaDB.db.delete_all_blueprint_packages()
-        for package_name in self._src_blueprint.packages:
-            StackzillaDB.db.create_blueprint_package(path=package_name)
-
-        # Dump all of the modules to the databse
-        StackzillaDB.db.delete_all_blueprint_modules()
-        for module in self._src_blueprint.modules.values():
-            StackzillaDB.db.create_blueprint_module(path=module.path, data=module.data)
 
     # pylint: disable=too-many-branches,too-many-locals
     def diff(self, source: Optional[StackzillaBlueprint], destination: Optional[StackzillaBlueprint]):
@@ -276,7 +285,14 @@ class StackzillaDiff:
         src_resources: Dict[str, StackzillaResource] = source.resources
         dest_resources: Dict[str, StackzillaResource] = destination.resources
 
-        # The keys for dest_resource are prefixed with the 'sb_db_bp' prefix. Replace it with '.' to match
+        # The keys for the src_resource are prefixed with the 'sz_disk_bp' prefix.
+        src_resource_names_original = list(src_resources)
+        for resource_name in src_resource_names_original:
+            new_key_name = resource_name.replace(DISK_BP_PREFIX, '.')
+            src_resources[new_key_name] = src_resources[resource_name]
+            del src_resources[resource_name]
+
+        # The keys for dest_resource are prefixed with the 'sz_db_bp' prefix. Replace it with '.' to match
         # the blueprint paths in a non-namespaced blueprint.
         # ex: sb_db_bp.servers.webserver.MyWebserverVolume => ..servers.webserver.MyWebserverVolume
         dest_resource_names_original = list(dest_resources)
@@ -284,6 +300,15 @@ class StackzillaDiff:
             new_key_name = resource_name.replace(DB_BP_PREFIX, '.')
             dest_resources[new_key_name] = dest_resources[resource_name]
             del dest_resources[resource_name]
+
+        # If the blueprint contains resources not in the database, omit them from consideration
+        for resource_name in list(dest_resources.keys()):
+            dest_resource: StackzillaResource = dest_resources[resource_name]()
+
+            try:
+                dest_resource.load_from_db()
+            except ResourceNotFound:
+                del dest_resources[resource_name]
 
         # Pass 1 - diff the source against the destination
         for resource_name in src_resources:
@@ -295,26 +320,23 @@ class StackzillaDiff:
             if resource_name in dest_resources:
                 dest_resource: StackzillaResource = dest_resources[resource_name]()
 
-                # Load the resource's attributes from the database (instead of using the ones from the blueprint)
-                dest_resource.load_from_db()
-
                 # Diff the resources
                 attr_diff_result, attr_diffs = self.compare(source=src_resource, destination=dest_resource)
 
                 if attr_diff_result == StackzillaDiffResult.SAME:
                     # Nothing to do - move along!
                     diffs[resource_name] = StackzillaResourceDiff(src_resource=src_resource,
-                                                                dest_resource=dest_resource,
-                                                                result=StackzillaDiffResult.SAME,
-                                                                attribute_diffs={})
+                                                                  dest_resource=dest_resource,
+                                                                  result=StackzillaDiffResult.SAME,
+                                                                  attribute_diffs={})
                     continue
 
                 if attr_diff_result in [StackzillaDiffResult.CONFLICT, StackzillaDiffResult.REBUILD_REQUIRED]:
                     result = attr_diff_result
                     diffs[resource_name] = StackzillaResourceDiff(src_resource=src_resource,
-                                                                dest_resource=dest_resource,
-                                                                result=result,
-                                                                attribute_diffs=attr_diffs)
+                                                                  dest_resource=dest_resource,
+                                                                  result=result,
+                                                                  attribute_diffs=attr_diffs)
 
                 else:
                     raise RuntimeError('Invalid diff result detected')
@@ -399,7 +421,6 @@ class StackzillaDiff:
 
                 # The attribute values do not match!
                 if src_val != dest_val:
-
                     # Mark the entire resource-to-resource diff as needing a rebuild
                     if src_attributes[attr_name].modify_rebuild:
                         result = StackzillaDiffResult.REBUILD_REQUIRED
@@ -411,10 +432,10 @@ class StackzillaDiff:
                             result = StackzillaDiffResult.CONFLICT
 
                     results[attr_name] = StackzillaAttributeDiff(src_attribute=src_attributes[attr_name],
-                                                               dest_attribute=dest_attributes[attr_name],
-                                                               result=StackzillaDiffResult.CONFLICT,
-                                                               src_value=src_val,
-                                                               dest_value=dest_val)
+                                                                 dest_attribute=dest_attributes[attr_name],
+                                                                 result=StackzillaDiffResult.CONFLICT,
+                                                                 src_value=src_val,
+                                                                 dest_value=dest_val)
 
             else:
                 # Mark the resource-to-resource diff as CONFLICT, assuming the current diff result is not REBUILD.
