@@ -1,3 +1,4 @@
+"""Tests for StackzillaAttribute module."""
 import inspect
 
 from stackzilla.attribute import StackzillaAttribute

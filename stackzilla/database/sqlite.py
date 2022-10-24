@@ -24,7 +24,7 @@ from stackzilla.database.exceptions import (AttributeNotFound,
                                             DuplicateBlueprintPackage,
                                             MetadataKeyNotFound,
                                             ResourceNotFound)
-from stackzilla.logging.core import CoreLogger
+from stackzilla.logger.core import CoreLogger
 from stackzilla.resource import StackzillaResource
 
 

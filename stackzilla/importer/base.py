@@ -7,7 +7,7 @@ from types import ModuleType
 from typing import Dict, List, Optional, Type
 
 from stackzilla.importer.exceptions import ClassNotFound
-from stackzilla.logging.core import CoreLogger
+from stackzilla.logger.core import CoreLogger
 
 
 @dataclass

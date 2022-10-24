@@ -54,7 +54,7 @@ def test_create_resource(database: StackzillaSQLiteDB):
     for name in my_resource.attributes:
         database.create_attribute(resource=my_resource, name=name, value=getattr(my_resource, name))
 
-    db_resource = database.get_resource(path='stackzilla.database.tests.test_resource.MyResource')
+    db_resource = database.get_resource(path='database.tests.test_resource.MyResource')
     assert db_resource.__class__ == MyResource
     assert db_resource.version() == MyResource.version()
 
@@ -79,7 +79,7 @@ def test_create_resource(database: StackzillaSQLiteDB):
 def test_invalid_get_resource(database: StackzillaSQLiteDB):
     """Test that invalid resoure queries raise the expected exception."""
     with pytest.raises(ResourceNotFound):
-        database.get_resource(path='stackzilla.database.tests.test_resource.MyResource')
+        database.get_resource(path='database.tests.test_resource.MyResource')
 
     with pytest.raises(ResourceNotFound):
         database.get_resource(path='.junk')
