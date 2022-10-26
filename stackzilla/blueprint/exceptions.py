@@ -11,3 +11,6 @@ class BlueprintVerifyFailure(Exception):
         """Default constructor."""
         super().__init__(*args)
         self.errors = errors
+
+class ResourceNotFound(Exception):
+    """Raised when a resource is not found within the blueprint."""

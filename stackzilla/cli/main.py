@@ -3,6 +3,7 @@ import click
 from colorama import init as colorama_init
 
 from stackzilla.cli.blueprint import blueprint
+from stackzilla.cli.compute import compute
 from stackzilla.cli.database import database
 from stackzilla.cli.metadata import metadata
 from stackzilla.cli.options import namespace_option
@@ -46,3 +47,4 @@ def delete():
 cli.add_command(blueprint)
 cli.add_command(metadata)
 cli.add_command(database)
+cli.add_command(compute)

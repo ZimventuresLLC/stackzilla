@@ -1,11 +1,12 @@
 """Class for interacting with end-user blueprints."""
 from typing import Dict, List, Optional
 
-from stackzilla.blueprint.exceptions import BlueprintVerifyFailure
+from stackzilla.blueprint.exceptions import (BlueprintVerifyFailure,
+                                             ResourceNotFound)
 from stackzilla.graph import Graph
 from stackzilla.importer.base import ModuleInfo
 from stackzilla.importer.db_importer import DatabaseImporter
-from stackzilla.importer.exceptions import NotLoaded
+from stackzilla.importer.exceptions import ClassNotFound, NotLoaded
 from stackzilla.importer.importer import Importer
 from stackzilla.resource.base import StackzillaResource
 from stackzilla.resource.exceptions import ResourceVerifyError
@@ -47,6 +48,23 @@ class StackzillaBlueprint:
     def load(self):
         """Load the blueprint into the Python namespace."""
         self._importer.load()
+
+    def get_resource(self, path: str) -> StackzillaResource:
+        """Fetch a resource from the blueprint.
+
+        Args:
+            path (str): Full Python path to the resource within the blueprint
+
+        Raises:
+            ResourceNotFound: Raised if the blueprint resource is not found
+
+        Returns:
+            StackzillaResource: The base resource object.
+        """
+        try:
+            return self._importer.get_class(name=path)
+        except ClassNotFound as err:
+            raise ResourceNotFound from err
 
     @property
     def resources(self) -> Dict[str, StackzillaResource]:
