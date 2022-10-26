@@ -56,7 +56,6 @@ class BaseImporter:
             Type[object]: The desired class
         """
         full_path = name
-
         if self._package_root != '':
             full_path = f'{self._package_root}.{name}'
         else:

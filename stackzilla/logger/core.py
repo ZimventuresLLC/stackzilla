@@ -27,5 +27,7 @@ class CoreLogger(BaseLogger):
         # Add the component to the extra data
         if extra is None:
             extra = {'component': self._component}
+        else:
+            extra['component'] = self._component
 
         super()._log(message, level, extra)
