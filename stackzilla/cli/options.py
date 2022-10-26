@@ -18,7 +18,7 @@ def path_option(function):
     """Decorator for any CLI command which takes the path to a blueprint resource."""
     function = click.option('--path', required=True, help='Python path to the blueprint resource')(function)
     return function
-    
+
 def key_option(function):
     """Decorator for the metadata key CLI argument."""
     function = click.option('--key', required=True, help='Metadata key to index by')(function)

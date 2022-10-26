@@ -1,7 +1,8 @@
 """Class for interacting with end-user blueprints."""
 from typing import Dict, List, Optional
 
-from stackzilla.blueprint.exceptions import BlueprintVerifyFailure, ResourceNotFound
+from stackzilla.blueprint.exceptions import (BlueprintVerifyFailure,
+                                             ResourceNotFound)
 from stackzilla.graph import Graph
 from stackzilla.importer.base import ModuleInfo
 from stackzilla.importer.db_importer import DatabaseImporter

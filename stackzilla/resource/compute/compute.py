@@ -1,19 +1,25 @@
 """Module for base compute functionality."""
 from abc import abstractmethod
 from dataclasses import dataclass
+
 from pssh.clients import SSHClient
 
 from stackzilla.resource.base import StackzillaResource
 from stackzilla.resource.compute.exceptions import SSHConnectError
 
+
 @dataclass
 class SSHCredentials:
+    """Model for SSH credentials."""
+
     username: str
     password: str
     key: str
 
 @dataclass
 class SSHAddress:
+    """Model for host/port combination."""
+
     host: str
     port: int
 
@@ -49,7 +55,14 @@ class StackzillaCompute(StackzillaResource):
         return client
 
     def wait_for_ssh(self, retry_count: int, retry_delay: int):
-        """Wait for SSH to become available."""
+        """Wait for an SSH connection to become available.
 
+        Args:
+            retry_count (int): The number of times to try connecting
+            retry_delay (int): The delay, in seconds, between connection attempts
+
+        Raises:
+            SSHConnectError: Raised when the connection fails to succeed after retrying
+        """
         client = self.ssh_connect(retry_count=retry_count, retry_delay=retry_delay)
         client.disconnect()

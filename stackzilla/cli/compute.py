@@ -2,14 +2,12 @@
 import click
 
 from stackzilla.blueprint import StackzillaBlueprint
-from stackzilla.blueprint.exceptions import BlueprintVerifyFailure, ResourceNotFound
+from stackzilla.blueprint.exceptions import ResourceNotFound
 from stackzilla.cli.options import path_option
 from stackzilla.database.base import StackzillaDB
-from stackzilla.diff import StackzillaDiff, StackzillaDiffResult
-from stackzilla.graph import Graph
-from stackzilla.resource.base import StackzillaResource
 from stackzilla.resource.compute import StackzillaCompute
 from stackzilla.resource.compute.exceptions import SSHConnectError
+
 
 @click.group(name='compute')
 def compute():
@@ -35,7 +33,8 @@ def ssh(path, command):
     except ResourceNotFound as exc:
         raise click.ClickException('Resource specified by path not found') from exc
 
-    # TODO: Make sure that resource is actually a StackzillaCompute resource
+    if issubclass(resource, StackzillaCompute) is False:
+        raise click.ClickException(f'{resource.path()} is not a StackzillaCompute resource.')
     try:
         ssh_client = resource.ssh_connect()
     except SSHConnectError as exc:
