@@ -40,7 +40,8 @@ def init():
 @cli.command(name='delete')
 def delete():
     """Delete an existing namespace."""
-    StackzillaDB.db.delete()
+    if click.confirm('Are you sure? This will erase the database WITHOUT cleaning up any resources.'):
+        StackzillaDB.db.delete()
 
 
 # Add all of the sub-commands
