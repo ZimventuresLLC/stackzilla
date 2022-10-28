@@ -25,6 +25,10 @@ class BaseNullResource(StackzillaResource):
 
         return super().create()
 
+    def delete(self) -> None:
+        self._logger.debug(message="Deleting")
+        super().delete()
+
     def depends_on(self) -> List['StackzillaResource']:
         """Required to be overridden."""
         return []
