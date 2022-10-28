@@ -17,7 +17,7 @@ RUN echo 'export GEM_HOME="$HOME/gems"' >> ~/.bashrc
 RUN echo 'export PATH="$HOME/gems/bin:$PATH"' >> ~/.bashrc
 
 # Install Jekyll and Bundler
-RUN gem install jekyll bundler
+RUN sudo gem install jekyll bundler
 
 # [Optional] If your pip requirements rarely change, uncomment this section to add them to the image.
 # COPY requirements.txt /tmp/pip-tmp/

@@ -1,6 +1,7 @@
 ---
 permalink: /releases/
-layout: home
+layout: default
+title: Releases
 ---
 
 <div class="container text-center">
