@@ -1,5 +1,6 @@
 ---
-layout: home
+layout: default
+title: Stackzilla
 ---
 
 <div class="container text-center">
