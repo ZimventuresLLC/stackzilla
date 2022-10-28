@@ -7,6 +7,7 @@ from stackzilla.cli.options import path_option
 from stackzilla.database.base import StackzillaDB
 from stackzilla.resource.compute import StackzillaCompute
 from stackzilla.resource.compute.exceptions import SSHConnectError
+from stackzilla.utils.constants import DISK_BP_PREFIX
 
 
 @click.group(name='compute')
@@ -22,18 +23,18 @@ def ssh(path, command):
     StackzillaDB.db.open()
 
     # Import the blueprint from disk
-    disk_blueprint = StackzillaBlueprint()
-    disk_blueprint.load()
+    db_blueprint = StackzillaBlueprint(python_root=DISK_BP_PREFIX)
+    db_blueprint.load()
 
     # Load the resource specified by path
     try:
-        resource: StackzillaCompute = disk_blueprint.get_resource(path=path)
+        resource: StackzillaCompute = db_blueprint.get_resource(path=path)
         resource = resource()
         resource.load_from_db()
     except ResourceNotFound as exc:
         raise click.ClickException('Resource specified by path not found') from exc
 
-    if issubclass(resource, StackzillaCompute) is False:
+    if issubclass(resource.__class__, StackzillaCompute) is False:
         raise click.ClickException(f'{resource.path()} is not a StackzillaCompute resource.')
     try:
         ssh_client = resource.ssh_connect()

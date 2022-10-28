@@ -1,4 +1,5 @@
 """Module for base compute functionality."""
+import time
 from abc import abstractmethod
 from dataclasses import dataclass
 
@@ -46,9 +47,16 @@ class StackzillaCompute(StackzillaResource):
         self._core_logger.debug(message=f'Connecting to {addr.host}', extra={'host': addr.host, 'port': addr.port})
 
         try:
-            client = SSHClient(host=addr.host, port=addr.port,
+            # If there's a key, use that!
+            if credentials.key:
+                client = SSHClient(host=addr.host, port=addr.port,
                                num_retries=retry_count, retry_delay=retry_delay,
-                               password=credentials.password, user=credentials.username)
+                               pkey=credentials.key, user=credentials.username)
+            else:
+                client = SSHClient(host=addr.host, port=addr.port,
+                                num_retries=retry_count, retry_delay=retry_delay,
+                                password=credentials.password, user=credentials.username)
+
         except ConnectionRefusedError as err:
             raise SSHConnectError(str(err)) from err
 
@@ -64,5 +72,19 @@ class StackzillaCompute(StackzillaResource):
         Raises:
             SSHConnectError: Raised when the connection fails to succeed after retrying
         """
-        client = self.ssh_connect(retry_count=retry_count, retry_delay=retry_delay)
-        client.disconnect()
+        last_conn_err = None
+        while retry_count >= 0:
+            try:
+                client = self.ssh_connect(retry_count=retry_count, retry_delay=retry_delay)
+                client.disconnect()
+                return
+            except SSHConnectError as exc:
+                retry_count -= 1
+                self._core_logger.debug(f'Connection attempt failed: {str(exc)}')
+                last_conn_err = exc
+
+                # Wait for the specified delay before the next attempt
+                if retry_count != 0:
+                    time.sleep(retry_delay)
+
+        raise last_conn_err
