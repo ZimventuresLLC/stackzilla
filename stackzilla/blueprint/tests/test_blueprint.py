@@ -1,8 +1,8 @@
 """Ensure that blueprints work as expected using the NULL provider."""
 import logging
 from pathlib import Path
-from stackzilla.blueprint import StackzillaBlueprint
 
+from stackzilla.blueprint import StackzillaBlueprint
 
 logger = logging.getLogger(__file__)
 

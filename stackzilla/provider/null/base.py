@@ -26,6 +26,7 @@ class BaseNullResource(StackzillaResource):
         return super().create()
 
     def delete(self) -> None:
+        """Delete the resource from the database."""
         self._logger.debug(message="Deleting")
         super().delete()
 
