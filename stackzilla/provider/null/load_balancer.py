@@ -1,5 +1,6 @@
 """Test resource provider that mimics an application load balancer."""
 from typing import List
+
 from stackzilla.attribute.attribute import StackzillaAttribute
 from stackzilla.provider.null.base import BaseNullResource
 
