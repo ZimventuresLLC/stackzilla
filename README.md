@@ -5,6 +5,9 @@
 </p>
 
 [![codecov](https://codecov.io/gh/Stackzilla/stackzilla/branch/main/graph/badge.svg?token=SJQBB59GJ7)](https://codecov.io/gh/Stackzilla/stackzilla)
+[![unit-test](https://github.com/Stackzilla/stackzilla/actions/workflows/branch-push-unit-test.yml/badge.svg)](https://github.com/Stackzilla/stackzilla/actions/workflows/branch-push-unit-test.yml)
+[![Python 3.7 | 3.8 | 3.9 | 3.10](https://img.shields.io/badge/python-3.8%20%7C%203.9%20%7C%203.10-blue)](https://pypi.org/project/stackzilla/)
+[![pyPI](https://img.shields.io/pypi/v/stackzilla)](https://pypi.org/project/stackzilla/)
 
 Stackzilla is a Python ORM for managing application infrastructure and software. Stackzilla's object-oriented design allows for complete customization by the developer, if that level of customization is needed. For simpler deployments, Stackzilla offers an incredibly easy interface for Python developers to work with.
 
