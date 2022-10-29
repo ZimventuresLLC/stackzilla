@@ -14,6 +14,16 @@ class ResourceCreateFailure(Exception):
         self.resource_name: str = resource_name
         self.reason: str = reason
 
+class ResourceDeleteFailure(Exception):
+    """Raised when a resource deletion fails."""
+
+    def __init__(self, resource_name: str, reason: str, *args: object) -> None:
+        """Default constructor."""
+        super().__init__(*args)
+
+        self.resource_name: str = resource_name
+        self.reason: str = reason
+
 class ResourceVerifyError(Exception):
     """Raised when a resource fails to verify."""
 

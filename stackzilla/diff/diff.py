@@ -2,7 +2,7 @@
 from dataclasses import dataclass
 from enum import Enum, auto
 from io import StringIO
-from typing import Any, Dict, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 from colorama import Fore, Style
 
@@ -10,10 +10,12 @@ from stackzilla.attribute import StackzillaAttribute
 from stackzilla.blueprint.blueprint import StackzillaBlueprint
 from stackzilla.database.base import StackzillaDB
 from stackzilla.database.exceptions import ResourceNotFound
-from stackzilla.diff.exceptions import (NoDiffError,
+from stackzilla.diff.exceptions import (ApplyErrors, NoDiffError,
                                         UnhandledAttributeModifications)
 from stackzilla.graph import Graph
 from stackzilla.resource import AttributeModified, StackzillaResource
+from stackzilla.resource.exceptions import (ResourceCreateFailure,
+                                            ResourceDeleteFailure)
 from stackzilla.utils.constants import DB_BP_PREFIX, DISK_BP_PREFIX
 from stackzilla.utils.string import removeprefix
 
@@ -151,6 +153,14 @@ class StackzillaBlueprintDiff:
     # Valid values are SAME or CONFLICT
     result: StackzillaDiffResult
 
+@dataclass
+class StackzillaDiffApplyResult:
+    """The results for the application of a single resource."""
+
+    resource_name: str
+    result: str
+    error: str
+
 class StackzillaDiff:
     """Compute the differences between two collection of modules."""
 
@@ -168,7 +178,7 @@ class StackzillaDiff:
 
         return self._result
 
-    # pylint: disable=too-many-branches,too-many-locals
+    # pylint: disable=too-many-branches,too-many-locals,too-many-statements
     def apply(self):
         """Resolve the blueprint graph and apply differences."""
         # Create a graph from the source blueprint
@@ -202,6 +212,7 @@ class StackzillaDiff:
         for module in self._src_blueprint.modules.values():
             StackzillaDB.db.create_blueprint_module(path=module.path, data=module.data)
 
+        errors: List[str] = []
         for phase in phases:
 
             # Get the diffs for each resource in the phase
@@ -253,15 +264,29 @@ class StackzillaDiff:
                         raise UnhandledAttributeModifications(unhandled_attributes)
                 elif diff.result == StackzillaDiffResult.REBUILD_REQUIRED:
                     diff.dest_resource.delete()
-                    diff.src_resource.create()
+                    try:
+                        diff.src_resource.create()
+                    except ResourceCreateFailure as exc:
+                        errors.append(f'{exc.resource_name}: {exc.reason}')
                 elif diff.result == StackzillaDiffResult.DELETED:
-                    diff.dest_resource.delete()
+                    try:
+                        diff.dest_resource.delete()
+                    except ResourceDeleteFailure as exc:
+                        errors.append(f'{exc.resource_name}: {exc.reason}')
                 elif diff.result == StackzillaDiffResult.NEW:
-                    diff.src_resource.create()
+                    try:
+                        diff.src_resource.create()
+                    except ResourceCreateFailure as exc:
+                        errors.append(f'{exc.resource_name}: {exc.reason}')
                 elif diff.result == StackzillaDiffResult.SAME:
                     continue
                 else:
                     raise RuntimeError('Unhandled state')
+
+            # If there were errors in this phase, do not continue
+            if errors:
+                raise ApplyErrors(errors=errors)
+
 
 
 

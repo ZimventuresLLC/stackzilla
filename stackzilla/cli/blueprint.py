@@ -8,6 +8,7 @@ from stackzilla.blueprint import StackzillaBlueprint
 from stackzilla.blueprint.exceptions import BlueprintVerifyFailure
 from stackzilla.database.base import StackzillaDB
 from stackzilla.diff import StackzillaDiff, StackzillaDiffResult
+from stackzilla.diff.exceptions import ApplyErrors
 from stackzilla.graph import Graph
 from stackzilla.utils.constants import DISK_BP_PREFIX
 
@@ -62,7 +63,12 @@ def apply(path):
         click.echo(output_buffer.getvalue())
 
         if click.confirm('Apply Changes?'):
-            diff.apply()
+            try:
+                diff.apply()
+            except ApplyErrors as exc:
+                for error in exc.errors:
+                    click.echo(error)
+                raise click.ClickException('Apply failed - see errors above.')
     else:
         click.echo('No differences')
 

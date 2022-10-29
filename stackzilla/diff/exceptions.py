@@ -15,3 +15,11 @@ class UnhandledAttributeModifications(Exception):
 
 class NoDiffError(Exception):
     """Raised when the results parameter is accessed prior to a diff operation being applied."""
+
+class ApplyErrors(Exception):
+    """Exception that is raised if there are errors durring apply."""
+
+    def __init__(self, errors: List[str], *args: object) -> None:
+        """Default constructor."""
+        super().__init__(*args)
+        self.errors = errors
