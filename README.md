@@ -1,6 +1,6 @@
 # Stackzilla
 
-<p align="center">
+<p style="text-align:center">
     <img src="https://github.com/Stackzilla/stackzilla/blob/main/docs/assets/images/zilla_and_blocks.png?raw=true"  alt="stackzilla" width="500"/>
 </p>
 
