@@ -5,6 +5,9 @@ from typing import List
 if typing.TYPE_CHECKING:
     from stackzilla.diff.diff import AttributeModified
 
+class VersionIncompatibility(Exception):
+    """Raised when the major version of two resources do not match."""
+
 class UnhandledAttributeModifications(Exception):
     """Raised when a resource does not handle attribute modifications."""
 

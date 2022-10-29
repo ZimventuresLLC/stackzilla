@@ -1,9 +1,11 @@
 """Test for the resource diffing logic."""
 # pylint: disable=abstract-method
+import pytest
 
 from stackzilla.attribute import StackzillaAttribute
 from stackzilla.diff import StackzillaDiff, StackzillaDiffResult
-from stackzilla.resource import StackzillaResource
+from stackzilla.diff.exceptions import VersionIncompatibility
+from stackzilla.resource import ResourceVersion, StackzillaResource
 
 
 class BaseResource(StackzillaResource):
@@ -32,6 +34,27 @@ class SourceResourceModified(BaseResoureModified):
 class SourceResourceNew(BaseResourceNew):
     """A new disk resource."""
 
+class ResourceV1(StackzillaResource):
+    """V1 resource."""
+
+    def version(cls) -> ResourceVersion:
+        """v1 resource definion."""
+        return ResourceVersion(major=1, minor=0, build=0, name='v1')
+
+class ResourceV1Dot1(StackzillaResource):
+    """V1 resource."""
+
+    def version(cls) -> ResourceVersion:
+        """v1 resource definion."""
+        return ResourceVersion(major=1, minor=1, build=0, name='v1.1')
+
+class ResourceV2(StackzillaResource):
+    """V2 resource."""
+
+    def version(cls) -> ResourceVersion:
+        """v1 resource definion."""
+        return ResourceVersion(major=2, minor=0, build=0, name='v2')
+
 def test_resource_diff_same():
     """Ensure that two resources with identical attributes have no differences."""
     # Define the two objects
@@ -40,7 +63,7 @@ def test_resource_diff_same():
     dest_obj = DestinationResource()
 
     # Perform the diff
-    (result, diffs) = diff.compare(source=src_obj, destination=dest_obj)
+    (result, diffs) = diff.compare_attributes(source=src_obj, destination=dest_obj)
     assert result == StackzillaDiffResult.SAME
     assert len(diffs) == 0
 
@@ -56,7 +79,7 @@ def test_resource_src_diff_actual():
 
     diff = StackzillaDiff()
 
-    (result, diffs)  = diff.compare(source=src_obj, destination=dest_obj)
+    (result, diffs)  = diff.compare_attributes(source=src_obj, destination=dest_obj)
 
     assert result == StackzillaDiffResult.CONFLICT
     assert 'attr_int' in diffs
@@ -75,7 +98,7 @@ def test_resource_dest_diff_actual():
     dest_obj.attr_int = 88
 
     diff = StackzillaDiff()
-    (result, diffs) = diff.compare(source=src_obj, destination=dest_obj)
+    (result, diffs) = diff.compare_attributes(source=src_obj, destination=dest_obj)
 
     assert result == StackzillaDiffResult.CONFLICT
     assert 'attr_int' in diffs
@@ -89,7 +112,7 @@ def test_resource_diff_default():
     dest_obj = SourceResource()
 
     diff = StackzillaDiff()
-    (result, diffs) = diff.compare(source=src_obj, destination=dest_obj)
+    (result, diffs) = diff.compare_attributes(source=src_obj, destination=dest_obj)
 
     assert result == StackzillaDiffResult.CONFLICT
     assert len(diffs) == 2
@@ -109,7 +132,7 @@ def test_resource_diff_new_source():
     dest_obj = SourceResourceNew()
 
     diff = StackzillaDiff()
-    (result, diffs) = diff.compare(source=src_obj, destination=dest_obj)
+    (result, diffs) = diff.compare_attributes(source=src_obj, destination=dest_obj)
 
     assert result == StackzillaDiffResult.CONFLICT
     assert len(diffs) == 2
@@ -127,7 +150,7 @@ def test_resource_diff_deleted_source():
     src_obj = SourceResourceNew()
 
     diff = StackzillaDiff()
-    (result, diffs) = diff.compare(source=src_obj, destination=dest_obj)
+    (result, diffs) = diff.compare_attributes(source=src_obj, destination=dest_obj)
 
     assert result == StackzillaDiffResult.CONFLICT
     assert len(diffs) == 2
@@ -137,3 +160,29 @@ def test_resource_diff_deleted_source():
     # The attributes are new, so they shouldn't be in the destination
     assert diffs['attr_new_int'].dest_attribute is None
     assert diffs['attr_new_string'].dest_attribute is None
+
+def test_resource_diff_versions_same():
+    """Ensure that resources with the same major version do not throw an error."""
+    src_obj = ResourceV1()
+    dest_obj = ResourceV1()
+
+    diff = StackzillaDiff()
+    diff.compare_versions(source=src_obj, destination=dest_obj)
+
+def test_resource_diff_minor_version_change():
+    """Make sure resources that only differ by minor/build numbers don't raise an error."""
+    src_obj = ResourceV1()
+    dest_obj = ResourceV1Dot1()
+
+    diff = StackzillaDiff()
+    diff.compare_versions(source=src_obj, destination=dest_obj)
+
+def test_resource_diff_major_change():
+    """Make sure an exception is raised when a major version difference is detected"""
+    src_obj = ResourceV1()
+    dest_obj = ResourceV2()
+
+    diff = StackzillaDiff()
+
+    with pytest.raises(VersionIncompatibility):
+        diff.compare_versions(source=src_obj, destination=dest_obj)

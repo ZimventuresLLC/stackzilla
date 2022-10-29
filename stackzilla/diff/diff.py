@@ -11,7 +11,8 @@ from stackzilla.blueprint.blueprint import StackzillaBlueprint
 from stackzilla.database.base import StackzillaDB
 from stackzilla.database.exceptions import ResourceNotFound
 from stackzilla.diff.exceptions import (ApplyErrors, NoDiffError,
-                                        UnhandledAttributeModifications)
+                                        UnhandledAttributeModifications,
+                                        VersionIncompatibility)
 from stackzilla.graph import Graph
 from stackzilla.logger.core import CoreLogger
 from stackzilla.resource import AttributeModified, StackzillaResource
@@ -364,8 +365,11 @@ class StackzillaDiff:
                 dest_resource: StackzillaResource = dest_resources[resource_name]()
                 dest_resource.load_from_db()
 
-                # Diff the resources
-                attr_diff_result, attr_diffs = self.compare(source=src_resource, destination=dest_resource)
+                # Check for version incompatibilities
+                self.compare_versions(source=src_resource, destination=dest_resource)
+
+                # Diff the resource versions
+                attr_diff_result, attr_diffs = self.compare_attributes(source=src_resource, destination=dest_resource)
 
                 if attr_diff_result == StackzillaDiffResult.SAME:
                     # Nothing to do - move along!
@@ -433,7 +437,7 @@ class StackzillaDiff:
 
         self._result = StackzillaBlueprintDiff(resource_diffs=diffs, result=result)
 
-    def compare(self,
+    def compare_attributes(self,
                 source: StackzillaResource,
                 destination: StackzillaResource) -> Tuple[StackzillaDiffResult, Dict[str, StackzillaAttributeDiff]]:
         """Compare two resources and returns the attribute differences between them.
@@ -536,6 +540,22 @@ class StackzillaDiff:
                                                            dest_value=dest_val)
 
         return (result, results)
+
+    def compare_versions(self, source: StackzillaResource, destination: StackzillaResource):
+        """Compare the resources, checking for incompatible major version numbers.
+
+        Args:
+            source (StackzillaResource): The new resource (disk version)
+            destination (StackzillaResource): The original resource (database version)
+
+        Raises:
+            VersionIncompatibility: Raised when there is a mismatch
+        """
+        if source.version().major != destination.version().major:
+            raise VersionIncompatibility(
+                f'{source.path(True)} version mismatch: {source.version().major} != {destination.version().major}'
+            )
+
 
     def print(self, buffer: StringIO) -> None:
         """Print the results of a diff.

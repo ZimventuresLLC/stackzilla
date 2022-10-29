@@ -9,7 +9,8 @@ from stackzilla.blueprint.exceptions import BlueprintVerifyFailure
 from stackzilla.database.base import StackzillaDB
 from stackzilla.diff import StackzillaDiff, StackzillaDiffResult
 from stackzilla.diff.exceptions import (ApplyErrors,
-                                        UnhandledAttributeModifications)
+                                        UnhandledAttributeModifications,
+                                        VersionIncompatibility)
 from stackzilla.graph import Graph
 from stackzilla.utils.constants import DISK_BP_PREFIX
 
@@ -53,7 +54,10 @@ def apply(path):
 
     # Diff the blueprint
     diff = StackzillaDiff()
-    diff.diff(source=disk_blueprint, destination=db_blueprint)
+    try:
+        diff.diff(source=disk_blueprint, destination=db_blueprint)
+    except VersionIncompatibility as exc:
+        raise click.ClickException(str(exc))
 
     # Show the diff and prompt the user
     if diff.result.result != StackzillaDiffResult.SAME:
@@ -133,7 +137,11 @@ def diff_blueprints(path, verify):
 
     # Diff the blueprint
     diff = StackzillaDiff()
-    diff.diff(source=disk_blueprint, destination=db_blueprint)
+
+    try:
+        diff.diff(source=disk_blueprint, destination=db_blueprint)
+    except VersionIncompatibility as exc:
+        raise click.ClickException(str(exc))
 
     # Show the diff and prompt the user
     if diff.result.result != StackzillaDiffResult.SAME:
