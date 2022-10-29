@@ -405,6 +405,7 @@ class StackzillaSQLiteDB(StackzillaDBBase):
         }
 
         self.connection.execute(update_sql, update_data)
+        self.connection.commit()
 
     def get_attribute(self, resource: StackzillaResource, name: str) -> Any:
         """Fetch a single attribute from the dataase.
@@ -516,7 +517,7 @@ class StackzillaSQLiteDB(StackzillaDBBase):
         }
 
         self.connection.execute(update_sql, update_data)
-
+        self.connection.commit()
 
     def delete_blueprint_module(self, path: str) -> None:
         """Delete an existing module.
@@ -571,11 +572,13 @@ class StackzillaSQLiteDB(StackzillaDBBase):
         blueprint_package_id = self._get_blueprint_package_id(path=path)
         delete_sql = 'DELETE FROM StackzillaBlueprintPackage WHERE id=:id'
         self.connection.execute(delete_sql, {'id': blueprint_package_id})
+        self.connection.commit()
 
     def delete_all_blueprint_packages(self) -> None:
         """Delete all of the blueprint packages from the database."""
         delete_sql = 'DELETE FROM StackzillaBlueprintPackage'
         self.connection.execute(delete_sql)
+        self.connection.commit()
 
     def get_blueprint_package(self, path: str) -> bool:
         """Queries if a blueprint package exists in the database.

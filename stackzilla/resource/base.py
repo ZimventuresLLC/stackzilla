@@ -2,13 +2,14 @@
 import inspect
 from abc import abstractmethod
 from dataclasses import dataclass
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 from stackzilla.attribute import StackzillaAttribute
 from stackzilla.database.base import StackzillaDB
 from stackzilla.database.exceptions import AttributeNotFound, ResourceNotFound
 from stackzilla.logger.core import CoreLogger
-from stackzilla.resource.exceptions import ResourceVerifyError
+from stackzilla.resource.exceptions import (AttributeModifyFailure,
+                                            ResourceVerifyError)
 from stackzilla.utils.constants import DB_BP_PREFIX, DISK_BP_PREFIX
 from stackzilla.utils.string import removeprefix
 
@@ -21,6 +22,7 @@ class AttributeModified:
     previous_value: Any
     new_value: Any
     handled: bool = False
+    error: Optional[AttributeModifyFailure] = None
 
 
 @dataclass

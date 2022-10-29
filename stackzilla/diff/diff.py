@@ -13,8 +13,10 @@ from stackzilla.database.exceptions import ResourceNotFound
 from stackzilla.diff.exceptions import (ApplyErrors, NoDiffError,
                                         UnhandledAttributeModifications)
 from stackzilla.graph import Graph
+from stackzilla.logger.core import CoreLogger
 from stackzilla.resource import AttributeModified, StackzillaResource
-from stackzilla.resource.exceptions import (ResourceCreateFailure,
+from stackzilla.resource.exceptions import (AttributeModifyFailure,
+                                            ResourceCreateFailure,
                                             ResourceDeleteFailure)
 from stackzilla.utils.constants import DB_BP_PREFIX, DISK_BP_PREFIX
 from stackzilla.utils.string import removeprefix
@@ -169,6 +171,7 @@ class StackzillaDiff:
         self._result: StackzillaBlueprintDiff = None
         self._src_blueprint: StackzillaBlueprint = None
         self._dest_blueprint: StackzillaBlueprint = None
+        self._logger: CoreLogger = CoreLogger(component='diff')
 
     @property
     def result(self) -> StackzillaBlueprintDiff:
@@ -213,6 +216,7 @@ class StackzillaDiff:
             StackzillaDB.db.create_blueprint_module(path=module.path, data=module.data)
 
         errors: List[str] = []
+        # pylint: disable=too-many-nested-blocks
         for phase in phases:
 
             # Get the diffs for each resource in the phase
@@ -238,15 +242,17 @@ class StackzillaDiff:
 
                     # Invoke any StackzillaResource::*_modified() handlers
                     for attr_name, attr_diff in diff.attribute_diffs.items():
-
                         # _on_attribute_modified() should only be accessed from here.
                         # pylint: disable=protected-access
-                        if obj._on_attribute_modified(attribute_name=attr_name,
-                                                      previous_value=attr_diff.dest_value,
-                                                      new_value=attr_diff.src_value):
+                        try:
+                            if obj._on_attribute_modified(attribute_name=attr_name,
+                                                        previous_value=attr_diff.dest_value,
+                                                        new_value=attr_diff.src_value):
 
-                            # Note that the attribute modification has been handled
-                            modified_attrs[attr_name].handled = True
+                                # Note that the attribute modification has been handled
+                                modified_attrs[attr_name].handled = True
+                        except AttributeModifyFailure as exc:
+                            modified_attrs[attr_name].error = exc
 
                     # Invoke the "all-in-one" handler
                     obj.on_attributes_modified(attributes=modified_attrs)
@@ -254,13 +260,25 @@ class StackzillaDiff:
                     # Check for any unhandled attributes
                     unhandled_attributes = []
                     for attribute in modified_attrs.values():
-                        if attribute.handled is False:
+                        # Just log an error and continue onward. Do NOT persist the value to the database.
+                        if attribute.error:
+                            errors.append(f'{obj.path(remove_prefix=True)}: {attribute.name} - {attribute.error.reason} ')
+                        elif attribute.handled is False:
+                            # The attribute wasn't handled - get ready to log a failure!
                             unhandled_attributes.append(attribute)
                         else:
                             # Persist the attribute to the database
                             StackzillaDB.db.update_attribute(resource=obj, name=attribute.name, value=attribute.new_value)
 
                     if unhandled_attributes:
+
+                        if errors:
+                            self._logger.critical('Attribute modify encountered during unhandled attribute exception')
+                            self._logger.critical(errors)
+
+                        # Since this is actually a provider failure (usually hit during creation of the provider) it will
+                        # raise its own excption and "mask" the modify attribute failures. The developer should fix this
+                        # issue first!
                         raise UnhandledAttributeModifications(unhandled_attributes)
                 elif diff.result == StackzillaDiffResult.REBUILD_REQUIRED:
                     diff.dest_resource.delete()
@@ -344,6 +362,7 @@ class StackzillaDiff:
             # Is the resource available in both the source and destination
             if resource_name in dest_resources:
                 dest_resource: StackzillaResource = dest_resources[resource_name]()
+                dest_resource.load_from_db()
 
                 # Diff the resources
                 attr_diff_result, attr_diffs = self.compare(source=src_resource, destination=dest_resource)

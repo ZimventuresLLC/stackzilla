@@ -4,6 +4,16 @@ from typing import Dict, List
 from colorama import Fore, Style
 
 
+class AttributeModifyFailure(Exception):
+    """Raised when an attribute modification fails in an on_*_modified() handler."""
+
+    def __init__(self, attribute_name: str, reason: str, *args: object) -> None:
+        """Default constructor."""
+        super().__init__(*args)
+
+        self.attribute_name: str = attribute_name
+        self.reason: str = reason
+
 class ResourceCreateFailure(Exception):
     """Raised when a resource creation fails."""
 
