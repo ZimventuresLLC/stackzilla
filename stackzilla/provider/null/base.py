@@ -46,4 +46,4 @@ class BaseNullResource(StackzillaResource):
     @classmethod
     def version(cls) -> ResourceVersion:
         """Fetch the version of the resource provider."""
-        return ResourceVersion(major=1, minor=0, build=0, name='FCS')
+        return ResourceVersion(major=2, minor=0, build=0, name='FCS')

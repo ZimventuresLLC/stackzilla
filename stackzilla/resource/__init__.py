@@ -1,2 +1,3 @@
 """Testing."""
-from stackzilla.resource.base import AttributeModified, StackzillaResource
+from stackzilla.resource.base import (AttributeModified, ResourceVersion,
+                                      StackzillaResource)

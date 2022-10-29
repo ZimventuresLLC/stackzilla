@@ -34,4 +34,7 @@ def show_resource(path):
     except ResourceNotFound as exc:
         raise click.ClickException('Resource specified by path not found') from exc
 
+    print(resource.path(remove_prefix=True))
+    print(f'Version: {resource.version()}')
+    print(f'Saved version: {resource.saved_version()}')
     pprint.pprint(resource.__dict__)
