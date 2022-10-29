@@ -21,7 +21,7 @@ class BaseNullResource(StackzillaResource):
         self._logger.debug(message="Creating")
 
         if self.create_failure:
-            raise ResourceCreateFailure(resource_name=self.path(), reason="tesing failure")
+            raise ResourceCreateFailure(resource_name=self.path(True), reason="tesing failure")
 
         return super().create()
 
