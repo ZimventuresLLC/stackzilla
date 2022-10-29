@@ -8,7 +8,8 @@ from stackzilla.blueprint import StackzillaBlueprint
 from stackzilla.blueprint.exceptions import BlueprintVerifyFailure
 from stackzilla.database.base import StackzillaDB
 from stackzilla.diff import StackzillaDiff, StackzillaDiffResult
-from stackzilla.diff.exceptions import ApplyErrors
+from stackzilla.diff.exceptions import (ApplyErrors,
+                                        UnhandledAttributeModifications)
 from stackzilla.graph import Graph
 from stackzilla.utils.constants import DISK_BP_PREFIX
 
@@ -69,6 +70,12 @@ def apply(path):
                 for error in exc.errors:
                     click.echo(error)
                 raise click.ClickException('Apply failed - see errors above.')
+            except UnhandledAttributeModifications as exc:
+                for attr in exc.unhandled_attributes:
+                    click.echo(f'ERROR: Unhandled attribute modification - {attr.name}')
+                    raise click.ClickException(
+                        'Unhanlded attribute modifications. Please contact the provider author and report this bug.')
+
     else:
         click.echo('No differences')
 

@@ -1,15 +1,20 @@
 """Base boilerplate for NULL resources."""
-from typing import List
+from typing import Any, List
 
+from stackzilla.attribute.attribute import StackzillaAttribute
 from stackzilla.logger.provider import ProviderLogger
 from stackzilla.resource.base import ResourceVersion, StackzillaResource
-from stackzilla.resource.exceptions import ResourceCreateFailure
+from stackzilla.resource.exceptions import (AttributeModifyFailure,
+                                            ResourceCreateFailure)
 
 
 class BaseNullResource(StackzillaResource):
     """Base boilerplate for NULL resources."""
 
     create_failure = False
+
+    # When this attribute is modified, an exception will be raised in its on_modified() handler!
+    mod_fail = StackzillaAttribute(default='modify at y0ur own perilz!')
 
     def __init__(self, provider_name: str) -> None:
         """Create the logger."""
@@ -33,6 +38,10 @@ class BaseNullResource(StackzillaResource):
     def depends_on(self) -> List['StackzillaResource']:
         """Required to be overridden."""
         return []
+
+    def mod_fail_modified(self, previous_value: Any, new_value: Any) -> None:
+        """Modificaiton handler which will always raise an exception."""
+        raise AttributeModifyFailure(attribute_name='mod_fail', reason='Built-in test failure')
 
     @classmethod
     def version(cls) -> ResourceVersion:
