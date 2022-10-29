@@ -1,7 +1,7 @@
 """Tasks that can be executed via 'invoke <cmd>' for developers."""
 from invoke import task
 
-source_root = 'stackzilla'
+SOURCE_ROOT = 'stackzilla'
 
 @task
 def clean(c):
@@ -11,14 +11,14 @@ def clean(c):
 @task
 def lint(c):
     """Perform linting duties on the codebase."""
-    c.run(f'isort {source_root}')
-    c.run(f'pydocstyle {source_root}')
-    c.run(f'pylint ./{source_root}')
+    c.run(f'isort {SOURCE_ROOT}')
+    c.run(f'pydocstyle {SOURCE_ROOT}')
+    c.run(f'pylint ./{SOURCE_ROOT}')
 
 @task
 def test(c):
     """Run all of the tests!"""
-    c.run(f'pytest {source_root}')
+    c.run(f'pytest {SOURCE_ROOT}')
 
 @task
 def build(c):
