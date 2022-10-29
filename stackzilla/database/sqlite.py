@@ -26,6 +26,7 @@ from stackzilla.database.exceptions import (AttributeNotFound,
                                             ResourceNotFound)
 from stackzilla.logger.core import CoreLogger
 from stackzilla.resource import StackzillaResource
+from stackzilla.resource.base import ResourceVersion
 
 
 # pylint: disable=too-many-public-methods
@@ -300,7 +301,7 @@ class StackzillaSQLiteDB(StackzillaDBBase):
             ResourceNotFound: If the specified path does not exist
         """
         # Verify that the resource is availbale (ResourceNotFound will be raised if it isn't)
-        self._resource_id_from_path(path=path)
+        self._resource_from_path(path=path)
 
         # Break apart the path into the module and class components
         # example "a.b.c.MyClass" where "a.b.c" is the module and "MyClass" is the class naame
@@ -317,6 +318,22 @@ class StackzillaSQLiteDB(StackzillaDBBase):
         obj.load_from_db()
 
         return obj
+
+    def get_resource_version(self, resource: StackzillaResource) -> ResourceVersion:
+        """Fetch the resource's persisted version data.
+
+        Args:
+            resource (StackzillaResource): The resource to query the version information for.
+
+        Returns:
+            ResourceVersion: The version number
+        """
+        row_data = self._resource_from_path(path=resource.path())
+
+        return ResourceVersion(major=row_data['version_major'],
+                               minor=row_data['version_minor'],
+                               build=row_data['version_build'],
+                               name=row_data['version_name'])
 
     def update_resource(self, resource: StackzillaResource) -> None:
         """Called to update a resource in the database.
@@ -703,3 +720,23 @@ class StackzillaSQLiteDB(StackzillaDBBase):
                 raise ResourceNotFound(path)
 
             return row['id']
+
+    def _resource_from_path(self, path: str) -> dict:
+        """Helper method to fetch an entire resource row from a given path.
+
+        Args:
+            path (str): The path to query
+
+        Raises:
+            ResourceNotFound: Raised if the resource is not found.
+
+        Returns:
+            dict: The row data for the match
+        """
+        with self.connection:
+            cursor = self.connection.execute('SELECT * FROM StackzillaResource WHERE path=:path', {'path': path})
+            row = cursor.fetchone()
+            if row is None:
+                raise ResourceNotFound(path)
+
+            return row

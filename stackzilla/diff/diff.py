@@ -551,9 +551,9 @@ class StackzillaDiff:
         Raises:
             VersionIncompatibility: Raised when there is a mismatch
         """
-        if source.version().major != destination.version().major:
+        if source.version().major != destination.saved_version().major:
             raise VersionIncompatibility(
-                f'{source.path(True)} version mismatch: {source.version().major} != {destination.version().major}'
+                f'{source.path(True)} provider version mismatch: {source.version().major} != {destination.saved_version().major}'
             )
 
 

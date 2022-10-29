@@ -166,6 +166,9 @@ def test_resource_diff_versions_same():
     src_obj = ResourceV1()
     dest_obj = ResourceV1()
 
+    # This is to mimic what would happen when the resource is persisted to the database.
+    dest_obj._saved_version = dest_obj.version()
+
     diff = StackzillaDiff()
     diff.compare_versions(source=src_obj, destination=dest_obj)
 
@@ -174,13 +177,19 @@ def test_resource_diff_minor_version_change():
     src_obj = ResourceV1()
     dest_obj = ResourceV1Dot1()
 
+    # This is to mimic what would happen when the resource is persisted to the database.
+    dest_obj._saved_version = dest_obj.version()
+
     diff = StackzillaDiff()
     diff.compare_versions(source=src_obj, destination=dest_obj)
 
 def test_resource_diff_major_change():
     """Make sure an exception is raised when a major version difference is detected"""
-    src_obj = ResourceV1()
-    dest_obj = ResourceV2()
+    src_obj = ResourceV2()
+    dest_obj = ResourceV1()
+
+    # This is to mimic what would happen when the resource is persisted to the database.
+    dest_obj._saved_version = dest_obj.version()
 
     diff = StackzillaDiff()
 

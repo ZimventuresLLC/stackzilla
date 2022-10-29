@@ -68,6 +68,9 @@ class StackzillaResource(metaclass=SZMeta):
         """Base constructor for all Stackzilla resource types."""
         self._core_logger = CoreLogger(component='resource')
 
+        # The provider version at the time of persistance into the database.
+        # This is used during the blueprint diff/verification process
+        self._saved_version: Optional[ResourceVersion] = None
 
     @classmethod
     def path(cls, remove_prefix: bool=False) -> str:
@@ -158,6 +161,13 @@ class StackzillaResource(metaclass=SZMeta):
     @abstractmethod
     def version(cls) -> ResourceVersion:
         """Fetch the versioning data for the resource. This should be overridden by the provider."""
+
+    def saved_version(self) -> ResourceVersion:
+        """Return the persisted provider version OR the current one."""
+        if self._saved_version:
+            return self._saved_version
+
+        return self.version()
 
     def get_attribute(self, name) -> StackzillaAttribute:
         """Given an attribute name, fetch the StackzillaAttribute object.
@@ -252,6 +262,9 @@ class StackzillaResource(metaclass=SZMeta):
                 return
 
             raise err
+
+        # Load the version number from the database
+        self._saved_version = StackzillaDB.db.get_resource_version(resource=self)
 
     def create_in_db(self):
         """Persist the resource, and its attributes, in the database."""
