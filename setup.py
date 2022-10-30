@@ -73,6 +73,7 @@ setup(
               'stackzilla.logger',
               'stackzilla.provider.null',
               'stackzilla.resource',
+              'stackzilla.resource.compute',
               'stackzilla.utils'],
 
     python_requires='>3.6',
