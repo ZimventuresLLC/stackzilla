@@ -63,9 +63,14 @@ setup(
 
     # Packages and depencies
     package_dir={'stackzilla': 'stackzilla'},
-    packages=['stackzilla.blueprint',
+    packages=['stackzilla.attribute',
+              'stackzilla.blueprint',
               'stackzilla.cli',
               'stackzilla.database',
+              'stackzilla.diff',
+              'stackzilla.graph',
+              'stackzilla.importer',
+              'stackzilla.logger',
               'stackzilla.provider.null',
               'stackzilla.resource',
               'stackzilla.utils'],
