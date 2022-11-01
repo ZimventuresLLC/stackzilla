@@ -3,6 +3,10 @@ import click
 
 from stackzilla.cli._callbacks import namespace_callback
 
+def dry_run_option(function):
+    """Do everything but actually execute the operation."""
+    function = click.option('--dry-run/--no-dry-run', help='Skip performing the operation')(function)
+    return function
 
 def namespace_option(function):
     """Decorator for the namesapce CLI argument."""

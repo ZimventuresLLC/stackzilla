@@ -6,7 +6,9 @@ import click
 
 from stackzilla.blueprint import StackzillaBlueprint
 from stackzilla.blueprint.exceptions import BlueprintVerifyFailure
+from stackzilla.cli.options import dry_run_option
 from stackzilla.database.base import StackzillaDB
+from stackzilla.database.exceptions import ResourceNotFound
 from stackzilla.diff import StackzillaDiff, StackzillaDiffResult
 from stackzilla.diff.exceptions import (ApplyErrors,
                                         UnhandledAttributeModifications,
@@ -154,7 +156,8 @@ def diff_blueprints(path, verify):
         click.echo('No differences')
 
 @blueprint.command('delete')
-def delete():
+@dry_run_option
+def delete(dry_run):
     """Delete the blueprint."""
     StackzillaDB.db.open()
 
@@ -173,11 +176,28 @@ def delete():
     phases: List[List[Type[object]]] = graph.resolve(reverse=True)
 
     for phase in phases:
+
+        resources_in_phase = []
+        for resource in phase:
+            resources_in_phase.append(resource.path(remove_prefix=True))
+        click.echo(f'Resources in this deletion phase {resources_in_phase}')
+
         for resource in phase:
             obj = resource()
-            obj.load_from_db()
-            obj.delete()
+
+            try:
+                obj.load_from_db()
+            except ResourceNotFound:
+                # The resource was not found likely due to it not being correctly applied previously.
+                click.echo(f'{obj.path(remove_prefix=True)} was not in the database. Skipping.')
+                continue
+
+            if dry_run is False:
+                obj.delete()
+            else:
+                click.echo(f'Dry Run enabled: skipping deletion of {resource.path()}')
 
     # Delete all of the blueprint information from the database
-    StackzillaDB.db.delete_all_blueprint_packages()
-    StackzillaDB.db.delete_all_blueprint_modules()
+    if dry_run is False:
+        StackzillaDB.db.delete_all_blueprint_packages()
+        StackzillaDB.db.delete_all_blueprint_modules()

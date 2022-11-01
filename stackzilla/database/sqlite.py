@@ -341,7 +341,25 @@ class StackzillaSQLiteDB(StackzillaDBBase):
         Args:
             resource (StackzillaResource): The resource to update in the database
         """
-        raise NotImplementedError
+        version = resource.version()
+
+        update_sql = """UPDATE StackzillaResource SET
+                        "version_major"=:version_major,
+                        "version_minor"=:version_minor,
+                        "version_build"=:version_build,
+                        "version_name"=:version_name
+                        WHERE id=:resource_id"""
+
+        update_data = {
+            "version_major": version.major,
+            "version_minor": version.minor,
+            "version_build": version.build,
+            "version_name": version.name,
+            "resource_id": self._resource_id_from_path(resource.path())
+        }
+
+        self.connection.execute(update_sql, update_data)
+        self.connection.commit()
 
     def create_attribute(self, resource: StackzillaResource, name: str, value: Any):
         """Adds a new attribute to the database.

@@ -97,6 +97,12 @@ class StackzillaResource(metaclass=SZMeta):
     def update(self) -> None:
         """Apply the changes to this resource."""
 
+        # Update any resource details
+        StackzillaDB.db.update_resource(resource=self)
+
+        for name in self.attributes:
+            StackzillaDB.db.update_attribute(resource=self, name=name, value=getattr(self, name))
+
     def delete(self) -> None:
         """Delete a previously created resource."""
         self.delete_from_db()
@@ -249,6 +255,7 @@ class StackzillaResource(metaclass=SZMeta):
             method(previous_value=previous_value, new_value=new_value)
             return True
 
+        # There was no *_modified() method
         return False
 
     def load_from_db(self, silent_fail: bool=False):

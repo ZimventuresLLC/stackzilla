@@ -7,6 +7,7 @@ from stackzilla.cli.compute import compute
 from stackzilla.cli.database import database
 from stackzilla.cli.metadata import metadata
 from stackzilla.cli.options import namespace_option
+from stackzilla.cli.resource import resource
 from stackzilla.database.base import StackzillaDB
 from stackzilla.database.exceptions import DatabaseExists
 from stackzilla.logger.utils import setup_logging
@@ -49,3 +50,4 @@ cli.add_command(blueprint)
 cli.add_command(metadata)
 cli.add_command(database)
 cli.add_command(compute)
+cli.add_command(resource)
