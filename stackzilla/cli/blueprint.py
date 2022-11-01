@@ -6,9 +6,9 @@ import click
 
 from stackzilla.blueprint import StackzillaBlueprint
 from stackzilla.blueprint.exceptions import BlueprintVerifyFailure
-from stackzilla.cli.options import dry_run_option
+from stackzilla.cli.options import dry_run_option, blueprint_path
 from stackzilla.database.base import StackzillaDB
-from stackzilla.database.exceptions import ResourceNotFound
+from stackzilla.database.exceptions import DatabaseNotFound, ResourceNotFound
 from stackzilla.diff import StackzillaDiff, StackzillaDiffResult
 from stackzilla.diff.exceptions import (ApplyErrors,
                                         UnhandledAttributeModifications,
@@ -22,10 +22,13 @@ def blueprint():
     """Command group for all blueprint CLI commands."""
 
 @blueprint.command('apply')
-@click.option('--path', required=True)
+@blueprint_path
 def apply(path):
     """Apply the on-disk blueprint."""
-    StackzillaDB.db.open()
+    try:
+        StackzillaDB.db.open()
+    except DatabaseNotFound as exc:
+        raise click.ClickException('No database found.') from exc
 
     # Import the blueprint from disk
     disk_blueprint = StackzillaBlueprint(path=path)

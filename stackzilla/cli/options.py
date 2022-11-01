@@ -23,6 +23,11 @@ def path_option(function):
     function = click.option('--path', required=True, help='Python path to the blueprint resource')(function)
     return function
 
+def blueprint_path(function):
+    """Decorator for any CLI command which takes a blueprint file system path."""
+    function = click.option('--path', required=True, type=click.Path(exists=True), help='File system path to the blueprint')(function)
+    return function
+
 def key_option(function):
     """Decorator for the metadata key CLI argument."""
     function = click.option('--key', required=True, help='Metadata key to index by')(function)
