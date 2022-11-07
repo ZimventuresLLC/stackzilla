@@ -19,6 +19,20 @@ RUN echo 'export PATH="$HOME/gems/bin:$PATH"' >> ~/.bashrc
 # Install Jekyll and Bundler
 RUN sudo gem install jekyll bundler
 
+# Install kubectl dependencies
+RUN sudo apt-get install -y ca-certificates curl
+
+# Download the Google Cloud public signing key
+RUN sudo curl -fsSLo /usr/share/keyrings/kubernetes-archive-keyring.gpg https://packages.cloud.google.com/apt/doc/apt-key.gpg
+
+# Add the k8s apt repo
+RUN echo "deb [signed-by=/usr/share/keyrings/kubernetes-archive-keyring.gpg] https://apt.kubernetes.io/ kubernetes-xenial main" | sudo tee /etc/apt/sources.list.d/kubernetes.list
+
+# Finally, update apt-get and install kubectl
+RUN sudo apt-get update
+RUN sudo apt-get install -y kubectl
+
+
 # [Optional] If your pip requirements rarely change, uncomment this section to add them to the image.
 # COPY requirements.txt /tmp/pip-tmp/
 # RUN pip3 --disable-pip-version-check --no-cache-dir install -r /tmp/pip-tmp/requirements.txt \
