@@ -6,7 +6,7 @@ import click
 
 from stackzilla.blueprint import StackzillaBlueprint
 from stackzilla.blueprint.exceptions import BlueprintVerifyFailure
-from stackzilla.cli.options import dry_run_option, blueprint_path
+from stackzilla.cli.options import blueprint_path, dry_run_option
 from stackzilla.database.base import StackzillaDB
 from stackzilla.database.exceptions import DatabaseNotFound, ResourceNotFound
 from stackzilla.diff import StackzillaDiff, StackzillaDiffResult
@@ -21,6 +21,7 @@ from stackzilla.utils.constants import DISK_BP_PREFIX
 def blueprint():
     """Command group for all blueprint CLI commands."""
 
+# pylint: disable=too-many-branches
 @blueprint.command('apply')
 @blueprint_path
 def apply(path):

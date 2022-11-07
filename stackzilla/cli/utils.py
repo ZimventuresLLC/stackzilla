@@ -1,11 +1,12 @@
-"""CLI Utilities"""
+"""CLI Utilities."""
 import click
 
-from stackzilla.resource import StackzillaResource
+from stackzilla.blueprint import StackzillaBlueprint
 from stackzilla.database.base import StackzillaDB
 from stackzilla.database.exceptions import ResourceNotFound
-from stackzilla.blueprint import StackzillaBlueprint
+from stackzilla.resource import StackzillaResource
 from stackzilla.utils.constants import DISK_BP_PREFIX
+
 
 def get_resource_from_path(path: str) -> StackzillaResource:
     """Connect to the host via SSH."""

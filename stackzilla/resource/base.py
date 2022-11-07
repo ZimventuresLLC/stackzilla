@@ -96,7 +96,6 @@ class StackzillaResource(metaclass=SZMeta):
 
     def update(self) -> None:
         """Apply the changes to this resource."""
-
         # Update any resource details
         StackzillaDB.db.update_resource(resource=self)
 
@@ -116,6 +115,7 @@ class StackzillaResource(metaclass=SZMeta):
         """
         return []
 
+    # pylint: disable=too-many-branches
     def verify(self) -> None:
         """Verify all of the attributes within the resource.
 
@@ -135,9 +135,9 @@ class StackzillaResource(metaclass=SZMeta):
 
                 # Walk through the list, if the attribute is one.
                 if isinstance(attr_value, list):
-                    for v in attr_value:
-                        if v not in attribute.choices:
-                            error = f'{v} is not one of the available choices: {attribute.choices}'
+                    for val in attr_value:
+                        if val not in attribute.choices:
+                            error = f'{val} is not one of the available choices: {attribute.choices}'
                             verify_error_info.add_attribute_error(name=attr_name, error=error)
                 else:
                     if attr_value not in attribute.choices:

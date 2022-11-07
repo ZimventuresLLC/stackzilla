@@ -18,7 +18,7 @@ class Instance(BaseNullResource):
         super().__init__(provider_name='stackzilla.provider.null.instance')
 
     def create(self) -> None:
-
+        """Create the null instance."""
         # Persist to the database
         super().create()
 

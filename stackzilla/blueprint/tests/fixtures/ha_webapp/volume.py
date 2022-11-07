@@ -5,11 +5,11 @@ from .server import MyServer
 
 
 class MyVol(Volume):
-    """Dummy Volume."""
+    """A dummy volume for testing."""
 
     def __init__(self) -> None:
-        """Default constructur."""
+        """The constructor."""
         super().__init__()
-        self.size = 64
+        self.size = 128
         self.instance = MyServer
         self.create_failure = False

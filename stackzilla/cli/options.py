@@ -3,6 +3,7 @@ import click
 
 from stackzilla.cli._callbacks import namespace_callback
 
+
 def dry_run_option(function):
     """Do everything but actually execute the operation."""
     function = click.option('--dry-run/--no-dry-run', help='Skip performing the operation')(function)
@@ -25,7 +26,8 @@ def path_option(function):
 
 def blueprint_path(function):
     """Decorator for any CLI command which takes a blueprint file system path."""
-    function = click.option('--path', required=True, type=click.Path(exists=True), help='File system path to the blueprint')(function)
+    function = click.option('--path', required=True,
+                            type=click.Path(exists=True), help='File system path to the blueprint')(function)
     return function
 
 def key_option(function):
