@@ -5,6 +5,7 @@ from colorama import init as colorama_init
 from stackzilla.cli.blueprint import blueprint
 from stackzilla.cli.compute import compute
 from stackzilla.cli.database import database
+from stackzilla.cli.kubernetes import kubernetes
 from stackzilla.cli.metadata import metadata
 from stackzilla.cli.options import namespace_option
 from stackzilla.cli.resource import resource
@@ -47,7 +48,8 @@ def delete():
 
 # Add all of the sub-commands
 cli.add_command(blueprint)
-cli.add_command(metadata)
-cli.add_command(database)
 cli.add_command(compute)
+cli.add_command(database)
+cli.add_command(kubernetes)
+cli.add_command(metadata)
 cli.add_command(resource)

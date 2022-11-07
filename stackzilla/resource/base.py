@@ -131,9 +131,18 @@ class StackzillaResource(metaclass=SZMeta):
             attr_value = self.get_attribute_value(name=attr_name)
 
             # Verify that the value is in the list of choices, if defined
-            if attribute.choices and attr_value not in attribute.choices:
-                error = f'{attr_value} is not one of the available choices: {attribute.choices}'
-                verify_error_info.add_attribute_error(name=attr_name, error=error)
+            if attribute.choices:
+
+                # Walk through the list, if the attribute is one.
+                if isinstance(attr_value, list):
+                    for v in attr_value:
+                        if v not in attribute.choices:
+                            error = f'{v} is not one of the available choices: {attribute.choices}'
+                            verify_error_info.add_attribute_error(name=attr_name, error=error)
+                else:
+                    if attr_value not in attribute.choices:
+                        error = f'{attr_value} is not one of the available choices: {attribute.choices}'
+                        verify_error_info.add_attribute_error(name=attr_name, error=error)
 
             if attribute.required and attr_value is None:
                 verify_error_info.add_attribute_error(name=attr_name, error='Attribute is required but value is None')
