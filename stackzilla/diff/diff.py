@@ -231,7 +231,6 @@ class StackzillaDiff:
                 diff: StackzillaResourceDiff = self._result.resource_diffs[obj.path()]
 
                 if diff.result == StackzillaDiffResult.CONFLICT:
-                    diff.src_resource.update()
 
                     # Build a dictionary of AttributeModified objects to track what has and hasn't been handled.
                     modified_attrs = {}
@@ -247,8 +246,8 @@ class StackzillaDiff:
                         # pylint: disable=protected-access
                         try:
                             if obj._on_attribute_modified(attribute_name=attr_name,
-                                                        previous_value=attr_diff.dest_value,
-                                                        new_value=attr_diff.src_value):
+                                                          previous_value=attr_diff.dest_value,
+                                                          new_value=attr_diff.src_value):
 
                                 # Note that the attribute modification has been handled
                                 modified_attrs[attr_name].handled = True

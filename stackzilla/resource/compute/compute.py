@@ -36,6 +36,28 @@ class StackzillaCompute(StackzillaResource):
     def ssh_address(self) -> SSHAddress:
         """Provide the hostname/ip and port number for connecting to a host."""
 
+    @abstractmethod
+    def start(self, wait_for_online: True) -> None:
+        """Called by Stackzilla when a compute resource needs to be started.
+
+        Args:
+            wait_for_online (True): If True, the function should wait for the compute to be online.
+
+        Raises:
+            ComputeStartError: Raised if there was an error starting the compute
+        """
+
+    @abstractmethod
+    def stop(self, wait_for_offline: True) -> None:
+        """Called by Stackzilla when a compute resourdce needs to be stopped.
+
+        Args:
+            wait_for_offline (True): Wait for the compute to stop.
+
+        Raises:
+            ComputeStopError: Raised if there was an error stopping the compute
+        """
+
     def ssh_connect(self, retry_count: int=3, retry_delay: int=5) -> SSHClient:
         """Connect to the server via SSH.
 

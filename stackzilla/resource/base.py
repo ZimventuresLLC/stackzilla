@@ -96,6 +96,11 @@ class StackzillaResource(metaclass=SZMeta):
 
     def update(self) -> None:
         """Apply the changes to this resource."""
+        # Update any resource details
+        StackzillaDB.db.update_resource(resource=self)
+
+        for name in self.attributes:
+            StackzillaDB.db.update_attribute(resource=self, name=name, value=getattr(self, name))
 
     def delete(self) -> None:
         """Delete a previously created resource."""
@@ -110,6 +115,7 @@ class StackzillaResource(metaclass=SZMeta):
         """
         return []
 
+    # pylint: disable=too-many-branches
     def verify(self) -> None:
         """Verify all of the attributes within the resource.
 
@@ -125,9 +131,18 @@ class StackzillaResource(metaclass=SZMeta):
             attr_value = self.get_attribute_value(name=attr_name)
 
             # Verify that the value is in the list of choices, if defined
-            if attribute.choices and attr_value not in attribute.choices:
-                error = f'{attr_value} is not one of the available choices: {attribute.choices}'
-                verify_error_info.add_attribute_error(name=attr_name, error=error)
+            if attribute.choices:
+
+                # Walk through the list, if the attribute is one.
+                if isinstance(attr_value, list):
+                    for val in attr_value:
+                        if val not in attribute.choices:
+                            error = f'{val} is not one of the available choices: {attribute.choices}'
+                            verify_error_info.add_attribute_error(name=attr_name, error=error)
+                else:
+                    if attr_value not in attribute.choices:
+                        error = f'{attr_value} is not one of the available choices: {attribute.choices}'
+                        verify_error_info.add_attribute_error(name=attr_name, error=error)
 
             if attribute.required and attr_value is None:
                 verify_error_info.add_attribute_error(name=attr_name, error='Attribute is required but value is None')
@@ -249,6 +264,7 @@ class StackzillaResource(metaclass=SZMeta):
             method(previous_value=previous_value, new_value=new_value)
             return True
 
+        # There was no *_modified() method
         return False
 
     def load_from_db(self, silent_fail: bool=False):
