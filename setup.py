@@ -1,7 +1,7 @@
 """Setuptools configuration file."""
 import os
 
-from setuptools import setup, find_namespace_packages
+from setuptools import setup
 
 # Meta information
 dirname = os.path.dirname(os.path.realpath(__file__))
@@ -75,7 +75,6 @@ setup(
               'stackzilla.resource',
               'stackzilla.resource.compute',
               'stackzilla.utils'],
-
     python_requires='>3.6',
     include_package_data=True,
     install_requires=install_requirements,
