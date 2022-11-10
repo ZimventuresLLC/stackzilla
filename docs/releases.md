@@ -17,7 +17,7 @@ title: Releases
             <h1>pre-alpha</h1>
         </div>
         <div class="col link-light">
-            <a href="https://github.com/Stackzilla/stackzilla/releases/tag/0.0.6" class="btn btn-success rounded-pill" role="button">
+            <a href="https://github.com/Stackzilla/stackzilla/releases/tag/0.1.5" class="btn btn-success rounded-pill" role="button">
                 DOWNLOAD
             </a>
         </div>
