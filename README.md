@@ -1,4 +1,5 @@
 # Stackzilla
+ # Stackzilla
 
 <p style="text-align:center">
     <img src="https://github.com/Stackzilla/stackzilla/blob/main/docs/assets/images/zilla_and_blocks.png?raw=true"  alt="stackzilla" width="500"/>
@@ -21,15 +22,36 @@ pip install -U stackzilla
 View the Stackzilla PyPI package [here](https://pypi.org/project/stackzilla/).
 
 # Usage
-## A simple blueprint
-TBD: Pending the first provider being published!
+Check out our [getting started guide](https://stackzilla.dev/getting-started/) for installation and usage.
+## Blueprint Example
 
-## Provisioning
-```bash
-stackzilla --namespace hello_blueprint init
-stackzilla --namespace hello_blueprint blueprint apply --path ./myblueprint/
-... (show output)
-stackzilla --namespace hello_blueprint blueprint delete
+Here is a simple blueprint definition for a server on [Linode](https://www.linode.com/).
+
+```python
+import os
+from stackzilla.resource.ssh_key import StackzillaSSHKey
+from stackzilla.provider.linode.instance import LinodeInstance
+
+# This is our personal access token for interacting with the Linode API
+LinodeInstance.token = os.getenv('STACKZILLA_LINODE_TOKEN')
+
+class MyKey(StackzillaSSHKey):
+    def __init__(self) -> None:
+        super().__init__()
+        self.key_size = 2048
+
+
+class MyServer(LinodeInstance):
+    def __init__(self):
+        super().__init__()
+        self.region = 'us-east'
+        self.type = 'g6-nanode-1'
+        self.image = 'linode/alpine3.12'
+        self.label = 'Stackzilla_Test-Linode.1'
+        self.tags = ['testing']
+        self.private_ip = False
+        self.ssh_key = MyKey
+
 ```
 
 # Have a question?
