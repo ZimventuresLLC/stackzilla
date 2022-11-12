@@ -109,7 +109,7 @@ def verify_blueprint(path):
 
 @blueprint.command('diff')
 @click.option('--path', required=True, help='Full or relative path to the on-disk blueprint')
-@click.option('--verify/--no-verify', default=False, is_flag=True, help='Verify blueprints before diffing them')
+@click.option('--verify/--no-verify', default=True, is_flag=True, help='Verify blueprints before diffing them')
 def diff_blueprints(path, verify):
     """Show a diff of the on-disk and database blueprints."""
     StackzillaDB.db.open()
