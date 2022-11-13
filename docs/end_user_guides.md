@@ -42,7 +42,7 @@ title: End User Guides
         Stackzilla is intended* to be incredibly simple for basic use cases. Write a Python class, run <code>stackzilla blueprint apply</code>, and <i>BOOM</i> 👉 your infrastructure is up and running. For more <i>sophisticated</i> workflows, Stackzilla employs standard programatic constructs, such as overriding base methods, and dependency graph injection.
         </p>
         <p class="text-center">
-            <a class="btn btn-success disabled">View Guide</a>
+            <a class="btn btn-success" href='{{ "/core-concepts/" | relative_url }}'>View Guide</a>
         </p>
         <i>*It's good to have goals, right?</i>
     </div>
