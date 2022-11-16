@@ -13,6 +13,7 @@ def namespace_option(function):
     """Decorator for the namesapce CLI argument."""
     function = click.option(
         '--namespace',
+        envvar='SZ_NAMESPACE',
         required=True,
         expose_value=True,
         callback=namespace_callback,

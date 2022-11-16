@@ -22,6 +22,13 @@ Welcome to the Stackzilla CLI guide. Here, you will find details about the funct
 
 Almost every `stackzilla` command requires a namespace in order to operate. This argument is the name of the database (excluding the `.db` file extension) that Stackzilla should use when running.
 
+
+{% capture namespace_env_var %}
+If you don't want to type <code>--namespace whatever </code> for every CLI invocation, an environment variable option is available to make your life easier. Simply set the <code>SZ_NAMESPACE</code> environment variable to the name of your namespace and all future commands will use that for the namespace value.
+{% endcapture %}
+{% include note-info.html content=namespace_env_var %}
+
+
 ##### Example
 Let's create a new namespace and then set a metadata key within it.
 
