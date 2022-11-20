@@ -2,9 +2,13 @@
 import time
 from abc import abstractmethod
 from dataclasses import dataclass
+from typing import List
 
 from pssh.clients import SSHClient
 
+from stackzilla.attribute import StackzillaAttribute
+from stackzilla.host_services import HostServices
+from stackzilla.host_services.users import HostUser
 from stackzilla.resource.base import StackzillaResource
 from stackzilla.resource.compute.exceptions import SSHConnectError
 
@@ -27,6 +31,26 @@ class SSHAddress:
 
 class StackzillaCompute(StackzillaResource):
     """Implementation for a compute provider."""
+
+    # Optional attributes
+    users = StackzillaAttribute()
+
+    def __init__(self) -> None:
+        super().__init__()
+
+        # Attach a handler for when the instance is done being created
+        self.on_create_done.attach(handler=self._on_create_done)
+
+    def _on_create_done(self, sender: StackzillaResource):
+        """Event handler for when the compute creation is complete.
+
+        Args:
+            sender (StackzillaResource): Sender of the event
+        """
+        ssh_client = self.ssh_connect()
+        host_service = HostServices(ssh_client=ssh_client)
+        host_service.create_users(users=self.users)
+
 
     @abstractmethod
     def ssh_credentials(self) -> SSHCredentials:
@@ -57,6 +81,7 @@ class StackzillaCompute(StackzillaResource):
         Raises:
             ComputeStopError: Raised if there was an error stopping the compute
         """
+
 
     def ssh_connect(self, retry_count: int=3, retry_delay: int=5) -> SSHClient:
         """Connect to the server via SSH.
@@ -110,3 +135,28 @@ class StackzillaCompute(StackzillaResource):
                     time.sleep(retry_delay)
 
         raise last_conn_err
+
+    def users_modified(self, previous_value: List[HostUser], new_value: List[HostUser]):
+        """Handle the modification of the users parameter."""
+        client = self.ssh_connect()
+        host_services = HostServices(ssh_client=client)
+
+        # Delete any users
+        users_to_delete = []
+        if previous_value:
+            for user in previous_value:
+                if new_value is None or user not in new_value:
+                    users_to_delete.append(user)
+
+            if users_to_delete:
+                host_services.delete_users(users=users_to_delete)
+
+        # Create new users
+        users_to_create = []
+        if new_value:
+            for user in new_value:
+                if previous_value is None or user not in previous_value:
+                    users_to_create.append(user)
+
+            if users_to_create:
+                host_services.create_users(users=users_to_create)

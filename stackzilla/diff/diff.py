@@ -284,6 +284,7 @@ class StackzillaDiff:
                     diff.dest_resource.delete()
                     try:
                         diff.src_resource.create()
+                        diff.src_resource.on_create_done.invoke(sender=diff.src_resource)
                     except ResourceCreateFailure as exc:
                         errors.append(f'{exc.resource_name}: {exc.reason}')
                 elif diff.result == StackzillaDiffResult.DELETED:
@@ -294,6 +295,7 @@ class StackzillaDiff:
                 elif diff.result == StackzillaDiffResult.NEW:
                     try:
                         diff.src_resource.create()
+                        diff.src_resource.on_create_done.invoke(sender=diff.src_resource)
                     except ResourceCreateFailure as exc:
                         errors.append(f'{exc.resource_name}: {exc.reason}')
                 elif diff.result == StackzillaDiffResult.SAME:
