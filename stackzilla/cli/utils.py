@@ -1,5 +1,6 @@
 """CLI Utilities."""
 from typing import Optional, Type
+
 import click
 
 from stackzilla.blueprint import StackzillaBlueprint
@@ -11,7 +12,6 @@ from stackzilla.utils.constants import DISK_BP_PREFIX
 
 def get_resource_from_path(path: str, resource_type: Optional[Type]=StackzillaResource) -> StackzillaResource:
     """Connect to the host via SSH."""
-
     StackzillaDB.db.open()
 
     # Import the blueprint from disk

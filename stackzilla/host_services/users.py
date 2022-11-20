@@ -1,15 +1,18 @@
 """Module for managing host system users."""
 from dataclasses import dataclass
 from typing import List
+
 from pssh.clients import SSHClient
 from pssh.output import HostOutput
 
 from stackzilla.logger.core import CoreLogger
 from stackzilla.utils.ssh import read_output
 
+
 @dataclass
 class HostUser:
     """Model for a system user."""
+
     name: str
     # Optional attributes
     extra_groups: str = None
@@ -27,7 +30,9 @@ class UserDeleteError(Exception):
 
 class UserManagement:
     """Interface for performing user management on a host."""
+
     def __init__(self, ssh_client: SSHClient, distro: str) -> None:
+        """Constructor for the UserManagement class."""
         self._client: SSHClient = ssh_client
         self._distro: str = distro
         self._logger: CoreLogger = CoreLogger(component='user-mgmt')

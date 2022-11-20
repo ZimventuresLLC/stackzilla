@@ -7,6 +7,7 @@ from pssh.output import HostOutput
 
 from stackzilla.utils.ssh import read_output
 
+
 class PackageManager:
     """Base package manager class."""
 
@@ -38,10 +39,11 @@ class PackageManager:
         return [APK, APT, YUM, Emerge, InstallPKG]
 
 class APK(PackageManager):
-    """Apline Package Keeper. Not quite as cool as a Trapper Keeper. 😎"""
+    """Apline Package Keeper. Not quite as cool as a Trapper Keeper."""
 
     @classmethod
     def name(cls) -> str:
+        """Fetch the name of the package manager."""
         return "apk"
 
     @classmethod
@@ -66,6 +68,7 @@ class APT(PackageManager):
 
     @classmethod
     def name(cls) -> str:
+        """Fetch the name of the package manager."""
         return "apt"
 
     @classmethod
@@ -86,10 +89,11 @@ class APT(PackageManager):
         self.client.run_command(f'apt remove -y {package_list}', sudo=True)
 
 class YUM(PackageManager):
-    """Yellowdog Updater, Modified (YUM)"""
+    """Yellowdog Updater, Modified (YUM)."""
 
     @classmethod
     def name(cls) -> str:
+        """Fetch the name of the package manager."""
         return "yum"
 
     @classmethod
@@ -114,6 +118,7 @@ class Emerge(PackageManager):
 
     @classmethod
     def name(cls) -> str:
+        """Fetch the name of the package manager."""
         return "emerge"
 
     @classmethod
@@ -138,6 +143,7 @@ class InstallPKG(PackageManager):
 
     @classmethod
     def name(cls) -> str:
+        """Fetch the name of the package manager."""
         return "installpkg"
 
     @classmethod
@@ -149,7 +155,6 @@ class InstallPKG(PackageManager):
 
     def install_packages(self, packages: List[str]) -> None:
         """Install packages using upgradepkg."""
-
         # First, dowload all of the packages to /tmp
         package_list = ''
         for pkg in packages:

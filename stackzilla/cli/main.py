@@ -53,4 +53,3 @@ cli.add_command(database)
 cli.add_command(kubernetes)
 cli.add_command(metadata)
 cli.add_command(resource)
-

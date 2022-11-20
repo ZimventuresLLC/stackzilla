@@ -1,12 +1,14 @@
 """Basic tests for the events framework."""
-from typing import Dict
-import pytest
-from contextlib import contextmanager
 import gc
 import typing
-from stackzilla.events import StackzillaEvent
-from stackzilla.events.exceptions import HandlerNotFound, UnsupportedHandlerType
+from contextlib import contextmanager
+from typing import Dict
 
+import pytest
+
+from stackzilla.events import StackzillaEvent
+from stackzilla.events.exceptions import (HandlerNotFound,
+                                          UnsupportedHandlerType)
 from stackzilla.resource import StackzillaResource
 
 if typing.TYPE_CHECKING:

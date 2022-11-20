@@ -67,7 +67,6 @@ class StackzillaResource(metaclass=SZMeta):
 
     def __init__(self) -> None:
         """Base constructor for all Stackzilla resource types."""
-
         super().__init__()
 
         self._core_logger = CoreLogger(component='resource')

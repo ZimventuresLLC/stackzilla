@@ -1,18 +1,21 @@
 """Interface for the Host Services functionality."""
 import re
 from typing import List, Type
+
 from pssh.clients import SSHClient
 from pssh.output import HostOutput
 
 from stackzilla.host_services.package_managers.base import PackageManager
-from stackzilla.host_services.users import UserManagement, HostUser
+from stackzilla.host_services.users import HostUser, UserManagement
 from stackzilla.logger.core import CoreLogger
 from stackzilla.utils.ssh import read_output
+
 
 class HostServices:
     """Interface for working with a remote operating system."""
 
     def __init__(self, ssh_client: SSHClient) -> None:
+        """Default constructor."""
         self._client: SSHClient = ssh_client
         self._is_posix: bool = False
         self._linux_distro: str = '<unknown>'
@@ -26,7 +29,7 @@ class HostServices:
 
     @property
     def os_name(self) -> str:
-        """Get the OS string"""
+        """Get the OS string."""
         return self._os
 
     @property
@@ -61,7 +64,6 @@ class HostServices:
 
     def _query_system_facts(self):
         """Determine the remote OS type, package manager, and other details."""
-
         self._logger.debug(f'Starting host services fact check for {self._client.host}')
 
         # First thing first - determine if this is a POSIX-based operating system
@@ -72,7 +74,6 @@ class HostServices:
             self._logger.debug(f'uname output: {stdout} | Uname exit-code {exit_code}')
         else:
             # This is not a posix-based system
-            # TODO: Handle this!
             self._logger.debug(f'uname exited with {output.exit_code}')
 
         # Save off the output from uname.
@@ -103,7 +104,7 @@ class HostServices:
 
                 # Remove any quotes around the version
                 self._os_version = self._os_version.strip('"')
-                
+
                 self._logger.debug(f'Distro version found: {self._os_version}')
         else:
             self._logger.debug('/etc/os-release file was not found')

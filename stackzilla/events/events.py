@@ -1,10 +1,11 @@
 """Module for all of the Stackzilla event system logic."""
 import inspect
-import weakref
 import typing
+import weakref
 from typing import Callable, List
 
-from stackzilla.events.exceptions import HandlerNotFound, UnsupportedHandlerType
+from stackzilla.events.exceptions import (HandlerNotFound,
+                                          UnsupportedHandlerType)
 
 if typing.TYPE_CHECKING:
     from stackzilla.resource import StackzillaResource
@@ -54,7 +55,7 @@ class StackzillaEvent:
         raise HandlerNotFound()
 
     def invoke(self, sender: 'StackzillaResource', **kwargs):
-        """Invoke any handlers
+        """Invoke any handlers.
 
         Args:
             sender (StackzillaResource): The resource which is causing the event to be triggered.
@@ -67,9 +68,8 @@ class StackzillaEvent:
 
                 try:
                     resolved_ref(sender=sender, **kwargs)
-                except Exception:
+                except Exception: # pylint: disable=broad-except
                     # Swallow any exceptions
-                    # TODO: Log them at the very least!
                     pass
             else:
                 # The weakref is dead, remove this handler!

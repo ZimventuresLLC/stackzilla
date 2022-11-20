@@ -36,12 +36,13 @@ class StackzillaCompute(StackzillaResource):
     users = StackzillaAttribute()
 
     def __init__(self) -> None:
+        """Constructor for the compute class."""
         super().__init__()
 
         # Attach a handler for when the instance is done being created
         self.on_create_done.attach(handler=self._on_create_done)
 
-    def _on_create_done(self, sender: StackzillaResource):
+    def _on_create_done(self, _sender: StackzillaResource):
         """Event handler for when the compute creation is complete.
 
         Args:
