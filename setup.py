@@ -68,6 +68,8 @@ setup(
               'stackzilla.cli',
               'stackzilla.database',
               'stackzilla.diff',
+              'stackzilla.events',
+              'stackzilla.host_services',
               'stackzilla.graph',
               'stackzilla.importer',
               'stackzilla.logger',

@@ -7,6 +7,7 @@ from typing import Any, Dict, List, Optional
 from stackzilla.attribute import StackzillaAttribute
 from stackzilla.database.base import StackzillaDB
 from stackzilla.database.exceptions import AttributeNotFound, ResourceNotFound
+from stackzilla.events import StackzillaEvent
 from stackzilla.logger.core import CoreLogger
 from stackzilla.resource.exceptions import (AttributeModifyFailure,
                                             ResourceVerifyError)
@@ -66,11 +67,15 @@ class StackzillaResource(metaclass=SZMeta):
 
     def __init__(self) -> None:
         """Base constructor for all Stackzilla resource types."""
+        super().__init__()
+
         self._core_logger = CoreLogger(component='resource')
 
         # The provider version at the time of persistance into the database.
         # This is used during the blueprint diff/verification process
         self._saved_version: Optional[ResourceVersion] = None
+
+        self.on_create_done = StackzillaEvent()
 
     @classmethod
     def path(cls, remove_prefix: bool=False) -> str:
