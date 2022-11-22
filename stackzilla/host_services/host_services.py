@@ -1,6 +1,6 @@
 """Interface for the Host Services functionality."""
 import re
-from typing import List, Type
+from typing import List
 
 from pssh.clients import SSHClient
 from pssh.output import HostOutput
@@ -49,7 +49,7 @@ class HostServices:
         return self._linux_distro
 
     @property
-    def package_managers(self) -> List[Type]:
+    def package_managers(self) -> List[PackageManager]:
         """Fetch a list of the package managers on the system."""
         return self._package_managers
 

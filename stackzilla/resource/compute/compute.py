@@ -34,8 +34,9 @@ class StackzillaCompute(StackzillaResource):
     """Implementation for a compute provider."""
 
     # Optional attributes
-    groups = StackzillaAttribute()
-    users = StackzillaAttribute()
+    groups = StackzillaAttribute(required=False)
+    users = StackzillaAttribute(required=False)
+    packages = StackzillaAttribute(required=False)
 
     def __init__(self) -> None:
         """Constructor for the compute class."""
@@ -50,7 +51,7 @@ class StackzillaCompute(StackzillaResource):
         Args:
             sender (StackzillaResource): Sender of the event
         """
-        if self.users or self.groups:
+        if self.users or self.groups or self.packages:
             ssh_client = self.ssh_connect()
             host_service = HostServices(ssh_client=ssh_client)
 
@@ -59,6 +60,10 @@ class StackzillaCompute(StackzillaResource):
 
             if self.users:
                 host_service.create_users(users=self.users)
+
+            if self.packages:
+                pkg_mgr = host_service.package_managers[0]
+                pkg_mgr.install_packages(packages=self.packages)
 
     @abstractmethod
     def ssh_credentials(self) -> SSHCredentials:
@@ -179,19 +184,45 @@ class StackzillaCompute(StackzillaResource):
         # Delete any groups
         groups_to_delete = []
         if previous_value:
-            for user in previous_value:
-                if new_value is None or user not in new_value:
-                    groups_to_delete.append(user)
+            for group in previous_value:
+                if new_value is None or group not in new_value:
+                    groups_to_delete.append(group)
 
-            if groups_to_delete:
-                host_services.delete_groups(groups=groups_to_delete)
+        if groups_to_delete:
+            host_services.delete_groups(groups=groups_to_delete)
 
         # Create new groups
         groups_to_create = []
         if new_value:
-            for user in new_value:
-                if previous_value is None or user not in previous_value:
-                    groups_to_create.append(user)
+            for group in new_value:
+                if previous_value is None or group not in previous_value:
+                    groups_to_create.append(group)
 
-            if groups_to_create:
-                host_services.create_groups(groups=groups_to_create)
+        if groups_to_create:
+            host_services.create_groups(groups=groups_to_create)
+
+    def packages_modified(self, previous_value: List[str], new_value: List[str]):
+        """Handle when the list of packages is updated."""
+        client = self.ssh_connect()
+        host_services = HostServices(ssh_client=client)
+        pkg_mgr = host_services.package_managers[0]
+
+        # First pass will delete any packages that were removed from the host
+        packages_to_delete = []
+        if previous_value:
+            for package in previous_value:
+                if new_value is None or package not in new_value:
+                    packages_to_delete.append(package)
+
+        if packages_to_delete:
+            pkg_mgr.uninstall_packages(packages=packages_to_delete)
+
+        # Add any new packages
+        packages_to_add = []
+        if new_value:
+            for package in new_value:
+                if previous_value is None or package not in previous_value:
+                    packages_to_add.append(package)
+
+        if packages_to_add:
+            pkg_mgr.install_packages(packages=packages_to_add)

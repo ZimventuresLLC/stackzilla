@@ -8,6 +8,12 @@ from pssh.output import HostOutput
 from stackzilla.utils.ssh import read_output
 
 
+class InstallError(Exception):
+    """Raised when a package installation fails."""
+
+class UninstallError(Exception):
+    """Raised when a package uninstall fails."""
+
 class PackageManager:
     """Base package manager class."""
 
@@ -30,7 +36,7 @@ class PackageManager:
         """Stackzilla will invoke this when it wants to install packages."""
 
     @abstractmethod
-    def uninstall_packaegs(self, packages: List[str]) -> None:
+    def uninstall_packages(self, packages: List[str]) -> None:
         """Invoked when it's time to delete packages."""
 
     @staticmethod
@@ -56,12 +62,18 @@ class APK(PackageManager):
     def install_packages(self, packages: List[str]) -> None:
         """Install packages using APK."""
         package_list = ' '.join(packages)
-        self.client.run_command(f'apk add --no-progress {package_list}')
+        output = self.client.run_command(f'apk add --no-progress {package_list}')
+        stdout, exit_code = read_output(output)
+        if exit_code:
+            raise InstallError(stdout)
 
-    def uninstall_packaegs(self, packages: List[str]) -> None:
+    def uninstall_packages(self, packages: List[str]) -> None:
         """Uninstall packages using APK."""
         package_list = ' '.join(packages)
-        self.client.run_command(f'apk del --no-progress {package_list}')
+        output = self.client.run_command(f'apk del --no-progress {package_list}')
+        stdout, exit_code = read_output(output)
+        if exit_code:
+            raise UninstallError(stdout)
 
 class APT(PackageManager):
     """Advanced Packaging Tool."""
@@ -81,12 +93,18 @@ class APT(PackageManager):
     def install_packages(self, packages: List[str]) -> None:
         """Install packages using APT."""
         package_list = ' '.join(packages)
-        self.client.run_command(f'apt install -y {package_list}', sudo=True)
+        output = self.client.run_command(f'apt install -y {package_list}', sudo=True)
+        stdout, exit_code = read_output(output)
+        if exit_code:
+            raise InstallError(stdout)
 
-    def uninstall_packaegs(self, packages: List[str]) -> None:
+    def uninstall_packages(self, packages: List[str]) -> None:
         """Uninstall packages using APT."""
         package_list = ' '.join(packages)
-        self.client.run_command(f'apt remove -y {package_list}', sudo=True)
+        output = self.client.run_command(f'apt remove -y {package_list}', sudo=True)
+        stdout, exit_code = read_output(output)
+        if exit_code:
+            raise UninstallError(stdout)
 
 class YUM(PackageManager):
     """Yellowdog Updater, Modified (YUM)."""
@@ -106,12 +124,18 @@ class YUM(PackageManager):
     def install_packages(self, packages: List[str]) -> None:
         """Install packages using YUM."""
         package_list = ' '.join(packages)
-        self.client.run_command(f'yum install -y {package_list}', sudo=True)
+        output = self.client.run_command(f'yum install -y {package_list}', sudo=True)
+        stdout, exit_code = read_output(output)
+        if exit_code:
+            raise InstallError(stdout)
 
-    def uninstall_packaegs(self, packages: List[str]) -> None:
+    def uninstall_packages(self, packages: List[str]) -> None:
         """Uninstall packages using YUM."""
         package_list = ' '.join(packages)
-        self.client.run_command(f'yum remove -y {package_list}', sudo=True)
+        output = self.client.run_command(f'yum remove -y {package_list}', sudo=True)
+        stdout, exit_code = read_output(output)
+        if exit_code:
+            raise UninstallError(stdout)
 
 class Emerge(PackageManager):
     """CLI interface for Portage (the Gentoo package manager)."""
@@ -131,12 +155,18 @@ class Emerge(PackageManager):
     def install_packages(self, packages: List[str]) -> None:
         """Install packages using Emerge."""
         package_list = ' '.join(packages)
-        self.client.run_command(f'emerge --nospinner --quiet-build y {package_list}')
+        output = self.client.run_command(f'emerge --nospinner --quiet-build y {package_list}')
+        stdout, exit_code = read_output(output)
+        if exit_code:
+            raise InstallError(stdout)
 
-    def uninstall_packaegs(self, packages: List[str]) -> None:
+    def uninstall_packages(self, packages: List[str]) -> None:
         """Uninstall packages using Emerge."""
         package_list = ' '.join(packages)
-        self.client.run_command(f'emerge --deselect {package_list}')
+        output = self.client.run_command(f'emerge --deselect {package_list}')
+        stdout, exit_code = read_output(output)
+        if exit_code:
+            raise UninstallError(stdout)
 
 class InstallPKG(PackageManager):
     """CLI interface for Portage (the Gentoo package manager)."""
@@ -164,9 +194,12 @@ class InstallPKG(PackageManager):
             package_url = pkg[1]
             package_list += f'{package_url.split("/")[-1]} '
 
-        self.client.run_command(f'cd /tmp; upgradepkg --install-new {package_list}')
+        output = self.client.run_command(f'cd /tmp; upgradepkg --install-new {package_list}')
+        stdout, exit_code = read_output(output)
+        if exit_code:
+            raise InstallError(stdout)
 
-    def uninstall_packaegs(self, packages: List[str]) -> None:
+    def uninstall_packages(self, packages: List[str]) -> None:
         """Uninstall packages using removepkg."""
         package_list = ''
         for pkg in packages:
@@ -174,4 +207,7 @@ class InstallPKG(PackageManager):
             package_url = pkg[1]
             packages_list += f'{package_url.split("/")[-1]} '
 
-        self.client.run_command(f'cd /tmp; ugpradepkg --install-new {package_list}')
+        output = self.client.run_command(f'cd /tmp; ugpradepkg --install-new {package_list}')
+        stdout, exit_code = read_output(output)
+        if exit_code:
+            raise UninstallError(stdout)
