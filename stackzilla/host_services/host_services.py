@@ -12,6 +12,8 @@ from stackzilla.logger.core import CoreLogger
 from stackzilla.utils.ssh import read_output
 
 
+class HostServicesError(Exception):
+    """Raised when a host services operation fails."""
 class HostServices:
     """Interface for working with a remote operating system."""
 
@@ -72,6 +74,30 @@ class HostServices:
         """Delete gropus on the remote host."""
         group_mgmt = GroupManagement(ssh_client=self._client, distro=self.linux_distro)
         group_mgmt.delete_groups(groups=groups)
+
+    def add_authorized_ssh_key(self, user: str, key: str) -> None:
+        """Add a new SSH key to the list of authorized keys.
+
+        Args:
+            user (str): Name of the user the key is being added for
+            key (str): The public portion of the SSH key
+        """
+        output = self._client.run_command(command=f'echo "{key}" >> /home/{user}/.ssh.authorized_keys')
+        stdout, exit_code = read_output(output)
+        if exit_code:
+            raise HostServicesError(stdout)
+
+    def remove_authorized_ssh_key(self, user: str, key: str) -> None:
+        """Delete a key from the users list of authorized SSH keys.
+
+        Args:
+            user (str): The user to delete the key for
+            key (str): The public portion of the SSH key
+        """
+        output = self._client.run_command(command=f'sed -i "\\:{key}:d" /home/{user}/.ssh/authorized_keys')
+        stdout, exit_code = read_output(output)
+        if exit_code:
+            raise HostServicesError(stdout)
 
     def _query_system_facts(self):
         """Determine the remote OS type, package manager, and other details."""
