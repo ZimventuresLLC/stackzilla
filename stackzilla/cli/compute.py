@@ -72,14 +72,14 @@ def show(path):
     table = PrettyTable()
 
     # The first row are the headers
-    table.field_names = ['OS Name', 'OS Version', 'Is POSIX', 'Linux Distro', 'Package Manager(s)']
+    table.field_names = ['OS Name', 'OS Version', 'Is POSIX', 'Linux Distro', 'Package Manager(s)', 'SSH IP']
 
     # Build a list of the package managers
     pkg_mgr_names = [mgr.name() for mgr in host_services.package_managers]
 
     # The rest of the rows are the data
     table.add_row([host_services.os_name, host_services.os_version,
-                   host_services.is_posix, host_services.linux_distro, pkg_mgr_names])
+                   host_services.is_posix, host_services.linux_distro, pkg_mgr_names, resource.ssh_address().host])
 
     # Print it out!
     click.echo(table)

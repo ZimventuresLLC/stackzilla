@@ -5,3 +5,6 @@ class UnsupportedHandlerType(Exception):
 
 class HandlerNotFound(Exception):
     """Raised when the specified handler is not found during a detachment request."""
+
+class ParameterMissing(Exception):
+    """Raised when a required parameter is missing from a handler."""
