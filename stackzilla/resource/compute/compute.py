@@ -96,6 +96,16 @@ class StackzillaCompute(StackzillaResource):
         """
 
 
+    def restart_service(self, service: str) -> None:
+        """Restart a service running on the system.
+
+        Args:
+            service (str): Name of the service to restart.
+        """
+        client = self.ssh_connect()
+        host_services = HostServices(ssh_client=client)
+        host_services.restart_service(service=service)
+
     def ssh_connect(self, retry_count: int=3, retry_delay: int=5) -> SSHClient:
         """Connect to the server via SSH.
 
