@@ -4,7 +4,7 @@ import typing
 import weakref
 from typing import Callable, List
 
-from stackzilla.events.exceptions import (HandlerNotFound,
+from stackzilla.events.exceptions import (HandlerNotFound, ParameterMissing,
                                           UnsupportedHandlerType)
 
 if typing.TYPE_CHECKING:
@@ -68,6 +68,9 @@ class StackzillaEvent:
 
                 try:
                     resolved_ref(sender=sender, **kwargs)
+                except TypeError as err:
+                    if "got an unexpected keyword argument 'sender'" in str(err):
+                        raise ParameterMissing('sender argument is missing from handler') from err
                 except Exception: # pylint: disable=broad-except
                     # Swallow any exceptions
                     pass

@@ -130,7 +130,7 @@ stackzilla --namespace demo blueprint apply --path ./my_blueprint/
 ++      description: <none> => Allows incoming TCP connections to port 22
 ++      egress: <none> => None
 ++      group_id: <none> => <TBD>
-++      ingress: <none> => [AWSSecurityGroupRule(cidr_blocks=[IPAddressRange(cidr_block='0.0.0.0/0', description='the whole wide world')], from_port=22, protocol='tcp', souce_group=None, to_port=22)]
+++      ingress: <none> => [AWSSecurityGroupRule(cidr_blocks=[IPAddressRange(cidr_block='0.0.0.0/0', description='the whole wide world')], from_port=22, protocol='tcp', source_group=None, to_port=22)]
 ++      name: <none> => InboundSSH
 ++      region: <none> => us-east-1
 ++      tags: <none> => None
@@ -215,7 +215,7 @@ $
 
 At this point, your namespace is empty. You can safely delete the file directly, or remove it with the `stackzilla delete <namespace>` command.
 # Next Steps
-Congrats on creating and workign with your first Stackzilla blueprint. We hope you can see how powerful Stackzilla is as an **Application ORM** development tool. 
+Congrats on creating and workign with your first Stackzilla blueprint. We hope you can see how powerful Stackzilla is as an **Application ORM** development tool.
 
 With that under your belt, it's time to move on to more advanced topics like:
 - custom event handling

@@ -5,6 +5,7 @@ from typing import List, Type
 from pssh.clients import SSHClient
 from pssh.output import HostOutput
 
+from stackzilla.host_services.groups import GroupManagement, HostGroup
 from stackzilla.host_services.package_managers.base import PackageManager
 from stackzilla.host_services.users import HostUser, UserManagement
 from stackzilla.logger.core import CoreLogger
@@ -61,6 +62,16 @@ class HostServices:
         """Delete users on the remote host."""
         user_mgmt = UserManagement(ssh_client=self._client, distro=self.linux_distro)
         user_mgmt.delete_users(users=users)
+
+    def create_groups(self, groups: List[HostGroup]) -> None:
+        """Create groups on the remote host."""
+        group_mgmt = GroupManagement(ssh_client=self._client, distro=self.linux_distro)
+        group_mgmt.create_groups(groups=groups)
+
+    def delete_groups(self, groups: List[HostGroup]) -> None:
+        """Delete gropus on the remote host."""
+        group_mgmt = GroupManagement(ssh_client=self._client, distro=self.linux_distro)
+        group_mgmt.delete_groups(groups=groups)
 
     def _query_system_facts(self):
         """Determine the remote OS type, package manager, and other details."""

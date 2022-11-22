@@ -8,6 +8,7 @@ from pssh.clients import SSHClient
 
 from stackzilla.attribute import StackzillaAttribute
 from stackzilla.host_services import HostServices
+from stackzilla.host_services.groups import HostGroup
 from stackzilla.host_services.users import HostUser
 from stackzilla.resource.base import StackzillaResource
 from stackzilla.resource.compute.exceptions import SSHConnectError
@@ -33,6 +34,7 @@ class StackzillaCompute(StackzillaResource):
     """Implementation for a compute provider."""
 
     # Optional attributes
+    groups = StackzillaAttribute()
     users = StackzillaAttribute()
 
     def __init__(self) -> None:
@@ -42,16 +44,21 @@ class StackzillaCompute(StackzillaResource):
         # Attach a handler for when the instance is done being created
         self.on_create_done.attach(handler=self._on_create_done)
 
-    def _on_create_done(self, _sender: StackzillaResource):
+    def _on_create_done(self, sender: StackzillaResource): # pylint: disable=unused-argument
         """Event handler for when the compute creation is complete.
 
         Args:
             sender (StackzillaResource): Sender of the event
         """
-        ssh_client = self.ssh_connect()
-        host_service = HostServices(ssh_client=ssh_client)
-        host_service.create_users(users=self.users)
+        if self.users or self.groups:
+            ssh_client = self.ssh_connect()
+            host_service = HostServices(ssh_client=ssh_client)
 
+            if self.groups:
+                host_service.create_groups(groups=self.groups)
+
+            if self.users:
+                host_service.create_users(users=self.users)
 
     @abstractmethod
     def ssh_credentials(self) -> SSHCredentials:
@@ -146,7 +153,9 @@ class StackzillaCompute(StackzillaResource):
         users_to_delete = []
         if previous_value:
             for user in previous_value:
-                if new_value is None or user not in new_value:
+
+                # Check for the presence of the username in the old list of users.
+                if new_value is None or user.name not in [old_user.name for old_user in new_value]:
                     users_to_delete.append(user)
 
             if users_to_delete:
@@ -156,8 +165,33 @@ class StackzillaCompute(StackzillaResource):
         users_to_create = []
         if new_value:
             for user in new_value:
-                if previous_value is None or user not in previous_value:
+                if previous_value is None or user.name not in [new_user.name for new_user in previous_value]:
                     users_to_create.append(user)
 
             if users_to_create:
                 host_services.create_users(users=users_to_create)
+
+    def groups_modified(self, previous_value: List[HostGroup], new_value: List[HostGroup]):
+        """Handle the modification of the groups parameter."""
+        client = self.ssh_connect()
+        host_services = HostServices(ssh_client=client)
+
+        # Delete any groups
+        groups_to_delete = []
+        if previous_value:
+            for user in previous_value:
+                if new_value is None or user not in new_value:
+                    groups_to_delete.append(user)
+
+            if groups_to_delete:
+                host_services.delete_groups(groups=groups_to_delete)
+
+        # Create new groups
+        groups_to_create = []
+        if new_value:
+            for user in new_value:
+                if previous_value is None or user not in previous_value:
+                    groups_to_create.append(user)
+
+            if groups_to_create:
+                host_services.create_groups(groups=groups_to_create)

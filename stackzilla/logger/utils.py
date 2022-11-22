@@ -57,6 +57,11 @@ LOGGING_CONFIG = {
             'level': 'DEBUG',
             'propagate': False
         },
+        'stackzilla.group-mgmt': {
+            'handlers': ['core'],
+            'level': 'DEBUG',
+            'propagate': False
+        },
         'stackzilla-test:volume': {
             'handlers': ['provider'],
             'level': 'DEBUG',
