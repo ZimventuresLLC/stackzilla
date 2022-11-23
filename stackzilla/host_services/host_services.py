@@ -122,12 +122,57 @@ class HostServices:
             service (str): Name of the service to restart
 
         Raises:
-            NotImplemented: Raised if an unsupported service manager is used.
+            RuntimeError: Raised if an unsupported service manager is encountered
+            HostServicesError: Raised if the operation fails
         """
         if self._service_manager == ServiceManagerType.service:
             cmd = f'service {service} restart'
         elif self._service_manager == ServiceManagerType.systemctl:
             cmd = f'systemctl restart {service}'
+        else:
+            raise RuntimeError('Unsupported service manager encountered.')
+
+        output = self._client.run_command(command=cmd, sudo=True)
+        stdout, exit_code = read_output(output)
+        if exit_code:
+            raise HostServicesError(stdout)
+
+    def start_service(self, service: str) -> None:
+        """Start/enable a service using the configured service manager.
+
+        Args:
+            service (str): Name of the service to start
+
+        Raises:
+            RuntimeError: Raised if an unsupported service manager is encountered
+            HostServicesError: Raised if the operation fails
+        """
+        if self._service_manager == ServiceManagerType.service:
+            cmd = f'service {service} start'
+        elif self._service_manager == ServiceManagerType.systemctl:
+            cmd = f'systemctl enable --now {service}'
+        else:
+            raise RuntimeError('Unsupported service manager encountered.')
+
+        output = self._client.run_command(command=cmd, sudo=True)
+        stdout, exit_code = read_output(output)
+        if exit_code:
+            raise HostServicesError(stdout)
+
+    def stop_service(self, service: str) -> None:
+        """Stop/disable a service using the configured service manager.
+
+        Args:
+            service (str): Name of the service to stop
+
+        Raises:
+            RuntimeError: Raised if an unsupported service manager is encountered
+            HostServicesError: Raised if the operation fails
+        """
+        if self._service_manager == ServiceManagerType.service:
+            cmd = f'service {service} stop'
+        elif self._service_manager == ServiceManagerType.systemctl:
+            cmd = f'systemctl disable --now {service}'
         else:
             raise RuntimeError('Unsupported service manager encountered.')
 
