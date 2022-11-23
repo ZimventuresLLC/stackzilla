@@ -1,5 +1,6 @@
 """Interface for the Host Services functionality."""
 import re
+from enum import Enum, auto
 from typing import List
 
 from pssh.clients import SSHClient
@@ -12,8 +13,17 @@ from stackzilla.logger.core import CoreLogger
 from stackzilla.utils.ssh import read_output
 
 
+# pylint: disable=invalid-name
+class ServiceManagerType(Enum):
+    """Enum to define the supported Linux service managers."""
+
+    service = auto()
+    systemctl = auto()
+
 class HostServicesError(Exception):
     """Raised when a host services operation fails."""
+
+# pylint: disable=too-many-instance-attributes
 class HostServices:
     """Interface for working with a remote operating system."""
 
@@ -26,6 +36,7 @@ class HostServices:
         self._os: str = '<unknown>'
         self._package_managers = []
         self._os_version: str = ''
+        self._service_manager = None
 
         # Gather information about the host system.
         self._query_system_facts()
@@ -49,6 +60,11 @@ class HostServices:
     def linux_distro(self) -> str:
         """Return the name of the Linux distribution."""
         return self._linux_distro
+
+    @property
+    def service_manager(self) -> str:
+        """Fetch the service manager to use."""
+        return self._service_manager.name
 
     @property
     def package_managers(self) -> List[PackageManager]:
@@ -95,6 +111,27 @@ class HostServices:
             key (str): The public portion of the SSH key
         """
         output = self._client.run_command(command=f'sed -i "\\:{key}:d" /home/{user}/.ssh/authorized_keys')
+        stdout, exit_code = read_output(output)
+        if exit_code:
+            raise HostServicesError(stdout)
+
+    def restart_service(self, service: str) -> None:
+        """Restart a service using the configured service manager.
+
+        Args:
+            service (str): Name of the service to restart
+
+        Raises:
+            NotImplemented: Raised if an unsupported service manager is used.
+        """
+        if self._service_manager == ServiceManagerType.service:
+            cmd = f'service {service} restart'
+        elif self._service_manager == ServiceManagerType.systemctl:
+            cmd = f'systemctl restart {service}'
+        else:
+            raise RuntimeError('Unsupported service manager encountered.')
+
+        output = self._client.run_command(command=cmd, sudo=True)
         stdout, exit_code = read_output(output)
         if exit_code:
             raise HostServicesError(stdout)
@@ -154,6 +191,14 @@ class HostServices:
         # Run a secondary os version check if one wasn't found in /etc/os-release
         if self._os_version is None:
             self._get_os_version()
+
+        # Determine which service manager is installed. The first one found, wins.
+        for mgr in [ServiceManagerType.service, ServiceManagerType.systemctl]:
+            output = self._client.run_command(command=f'which {mgr.name}')
+            stdout, exit_code = read_output(output)
+            if exit_code == 0:
+                self._service_manager = mgr
+                break
 
     def _get_os_version(self):
         """Fetch the operating system version."""
