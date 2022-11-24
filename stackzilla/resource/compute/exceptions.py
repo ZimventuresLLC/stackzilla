@@ -8,3 +8,6 @@ class ComputeStartError(Exception):
 
 class ComputeStopError(Exception):
     """Raised by StackzillaCompute.stop on failure."""
+
+class NoPackageManagers(Exception):
+    """Raised when no package managers are available."""

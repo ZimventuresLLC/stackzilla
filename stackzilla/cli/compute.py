@@ -1,7 +1,7 @@
 """Click handlers for the compute sub-command."""
 import click
 from prettytable import PrettyTable
-from pssh.clients import SSHClient
+from pssh.clients.ssh import SSHClient
 
 from stackzilla.cli.options import path_option
 from stackzilla.cli.utils import get_resource_from_path
@@ -28,7 +28,7 @@ def ssh(path, command):
     except SSHConnectError as exc:
         raise click.ClickException(f'Failed to connect: {str(exc)}') from exc
 
-    output = ssh_client.run_command(command)
+    output = ssh_client.run_command(command=command)
     for line in output.stdout:
         print(line)
 

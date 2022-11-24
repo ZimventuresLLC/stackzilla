@@ -2,11 +2,9 @@
 from dataclasses import dataclass
 from typing import List
 
-from pssh.clients import SSHClient
-from pssh.output import HostOutput
-
+from stackzilla.host_services.exceptions import UnsupportedPlatform
 from stackzilla.logger.core import CoreLogger
-from stackzilla.utils.ssh import read_output
+from stackzilla.utils.ssh import SSHClient
 
 
 @dataclass
@@ -45,6 +43,9 @@ class UserManagement:
             self._create_alpine_users(users=users)
         elif self._distro in ['centos', 'debian', 'fedora', 'gentoo', 'opensuse-leap', 'rhel', 'slackware', 'ubuntu']:
             self._create_standard_users(users=users)
+        else:
+            self._logger.critical('Unsupported platform detected in create_users', extra={'distro': self._distro})
+            raise UnsupportedPlatform(self._distro)
 
     def delete_users(self, users: List[HostUser]):
         """Delete users from the remote host."""
@@ -54,6 +55,9 @@ class UserManagement:
             self._delete_alpine_ubuntu_users(users=users)
         elif self._distro in ['centos', 'debian', 'fedora', 'gentoo', 'rhel', 'slackware', 'opensuse-leap']:
             self._delete_users(users=users)
+        else:
+            self._logger.critical('Unsupported platform detected in delete_users', extra={'distro': self._distro})
+            raise UnsupportedPlatform(self._distro)
 
     def _create_amzn_users(self, users: List[HostUser]):
         """Build up and execute the CLI command to create the list of users."""
@@ -78,19 +82,16 @@ class UserManagement:
             cmd += f' {user.name}'
 
             self._logger.debug(f'Creating user {user.name} on an Amazon Linux host')
-            output: HostOutput = self._client.run_command(command=cmd)
-            stdout, exit_code = read_output(output)
+            output = self._client.run_command(command=cmd)
 
-            if exit_code:
-                raise UserCreateError(stdout)
+            if output.exit_code:
+                raise UserCreateError(output.stderr)
 
             if user.password:
-                output: HostOutput = self._client.run_command(command=f'sudo su -c "echo {user.name}:{user.password} | chpasswd"')
-                stdout, exit_code = read_output(output)
-
-                if exit_code:
-                    self._logger.critical(f'User creation failed: {stdout}')
-                    raise UserCreateError(stdout)
+                output = self._client.run_command(command=f'sudo su -c "echo {user.name}:{user.password} | chpasswd"')
+                if output.exit_code:
+                    self._logger.critical(f'User creation failed: {output.stderr}')
+                    raise UserCreateError(output.stderr)
 
     def _create_alpine_users(self, users: List[HostUser]):
         """Create a list of users on an Alpine-based host."""
@@ -114,15 +115,13 @@ class UserManagement:
             cmd += f' {user.name}'
 
             output = self._client.run_command(command=cmd)
-            stdout, exit_code = read_output(output)
-            if exit_code:
-                raise UserCreateError(stdout)
+            if output.exit_code:
+                raise UserCreateError(output.stderr)
 
             if user.password:
                 output = self._client.run_command(command=f'echo "{user.name}:{user.password}" | chpasswd', sudo=True)
-                stdout, exit_code = read_output(output)
-                if exit:
-                    raise UserCreateError(stdout)
+                if output.exit_code:
+                    raise UserCreateError(output.stderr)
 
     def _create_standard_users(self, users: List[HostUser]):
         """Creates users via the 'useradd' CLI tool. Works on most Linux distros."""
@@ -143,37 +142,31 @@ class UserManagement:
             cmd += f' {user.name}'
 
             output = self._client.run_command(command=cmd)
-            stdout, exit_code = read_output(output)
-            if exit_code:
-                raise UserCreateError(stdout)
+            if output.exit_code:
+                raise UserCreateError(output.stderr)
 
             if user.password:
                 output = self._client.run_command(command=f'echo "{user.name}:{user.password}" | chpasswd', sudo=True)
-                stdout, exit_code = read_output(output)
-                if exit_code:
-                    raise UserCreateError(stdout)
+                if output.exit_code:
+                    raise UserCreateError(output.stderr)
 
     def _delete_amazon_users(self, users: List[HostUser]):
         """Delete users from an Amazon Linux host."""
         for user in users:
             output = self._client.run_command(command=f'userdel {user.name}', sudo=True)
-            stdout, exit_code = read_output(output)
-            if exit_code:
-                raise UserDeleteError(stdout)
+            if output.exit_code:
+                raise UserDeleteError(output.stderr)
 
     def _delete_alpine_ubuntu_users(self, users: List[HostUser]):
         """Delete users from an Alpline host."""
         for user in users:
-
             output = self._client.run_command(command=f'deluser {user.name}', sudo=True)
-            stdout, exit_code = read_output(output)
-            if exit_code:
-                raise UserDeleteError(stdout)
+            if output.exit_code:
+                raise UserDeleteError(output.stderr)
 
     def _delete_users(self, users: List[HostUser]):
         """Delete users from a Linux distro using the 'userdel' CLI command."""
         for user in users:
             output = self._client.run_command(command=f'userdel {user.name}', sudo=True)
-            stdout, exit_code = read_output(output)
-            if exit_code:
-                raise UserDeleteError(stdout)
+            if output.exit_code:
+                raise UserDeleteError(output.stderr)
