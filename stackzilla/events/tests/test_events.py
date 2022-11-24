@@ -7,7 +7,7 @@ from typing import Dict
 import pytest
 
 from stackzilla.events import StackzillaEvent
-from stackzilla.events.exceptions import (HandlerNotFound, ParameterMissing,
+from stackzilla.events.exceptions import (HandlerException, HandlerNotFound, ParameterMissing,
                                           UnsupportedHandlerType)
 from stackzilla.resource import StackzillaResource
 
@@ -184,7 +184,9 @@ def test_handler_exception():
     event = StackzillaEvent()
     resourceA = MockResource()
     event.attach(resourceA.handler_with_exception)
-    event.invoke(sender=None)
+
+    with pytest.raises(HandlerException):
+        event.invoke(sender=None)
 
 def test_handler_missing_sender():
     """Pass in a handler that does not have all required arguments."""

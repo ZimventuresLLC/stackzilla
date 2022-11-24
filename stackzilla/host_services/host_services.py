@@ -3,14 +3,11 @@ import re
 from enum import Enum, auto
 from typing import List
 
-from pssh.clients import SSHClient
-from pssh.output import HostOutput
-
 from stackzilla.host_services.groups import GroupManagement, HostGroup
 from stackzilla.host_services.package_managers.base import PackageManager
 from stackzilla.host_services.users import HostUser, UserManagement
 from stackzilla.logger.core import CoreLogger
-from stackzilla.utils.ssh import read_output
+from stackzilla.utils.ssh import SSHClient
 
 
 # pylint: disable=invalid-name
@@ -99,9 +96,8 @@ class HostServices:
             key (str): The public portion of the SSH key
         """
         output = self._client.run_command(command=f'echo "{key}" >> /home/{user}/.ssh.authorized_keys')
-        stdout, exit_code = read_output(output)
-        if exit_code:
-            raise HostServicesError(stdout)
+        if output.exit_code:
+            raise HostServicesError(output.stderr)
 
     def remove_authorized_ssh_key(self, user: str, key: str) -> None:
         """Delete a key from the users list of authorized SSH keys.
@@ -111,9 +107,8 @@ class HostServices:
             key (str): The public portion of the SSH key
         """
         output = self._client.run_command(command=f'sed -i "\\:{key}:d" /home/{user}/.ssh/authorized_keys')
-        stdout, exit_code = read_output(output)
-        if exit_code:
-            raise HostServicesError(stdout)
+        if output.exit_code:
+            raise HostServicesError(output.stderr)
 
     def restart_service(self, service: str) -> None:
         """Restart a service using the configured service manager.
@@ -132,10 +127,9 @@ class HostServices:
         else:
             raise RuntimeError('Unsupported service manager encountered.')
 
-        output = self._client.run_command(command=cmd, sudo=True)
-        stdout, exit_code = read_output(output)
-        if exit_code:
-            raise HostServicesError(stdout)
+        output= self._client.run_command(command=cmd, sudo=True)
+        if output.exit_code:
+            raise HostServicesError(output.stderr)
 
     def start_service(self, service: str) -> None:
         """Start/enable a service using the configured service manager.
@@ -155,9 +149,8 @@ class HostServices:
             raise RuntimeError('Unsupported service manager encountered.')
 
         output = self._client.run_command(command=cmd, sudo=True)
-        stdout, exit_code = read_output(output)
-        if exit_code:
-            raise HostServicesError(stdout)
+        if output.exit_code:
+            raise HostServicesError(output.stderr)
 
     def stop_service(self, service: str) -> None:
         """Stop/disable a service using the configured service manager.
@@ -177,37 +170,34 @@ class HostServices:
             raise RuntimeError('Unsupported service manager encountered.')
 
         output = self._client.run_command(command=cmd, sudo=True)
-        stdout, exit_code = read_output(output)
-        if exit_code:
-            raise HostServicesError(stdout)
+        if output.exit_code:
+            raise HostServicesError(output.stderr)
 
     def _query_system_facts(self):
         """Determine the remote OS type, package manager, and other details."""
         self._logger.debug(f'Starting host services fact check for {self._client.host}')
 
         # First thing first - determine if this is a POSIX-based operating system
-        output: HostOutput = self._client.run_command(command='uname')
-        stdout, exit_code = read_output(output)
-        if exit_code == 0:
+        output = self._client.run_command(command='uname')
+        if output.exit_code == 0:
             self._is_posix = True
-            self._logger.debug(f'uname output: {stdout} | Uname exit-code {exit_code}')
+            self._logger.debug(f'uname output: {output.stderr} | Uname exit-code {output.exit_code}')
         else:
             # This is not a posix-based system
             self._logger.debug(f'uname exited with {output.exit_code}')
 
         # Save off the output from uname.
         # This will be "Linux" for Linux based systems[]
-        self._os = stdout.strip()
+        self._os = output.stdout.strip()
 
         # Now it's time to determine the distribution that is installated.
-        output: HostOutput = self._client.run_command(command='cat /etc/os-release', use_pty=True)
-        stdout, exit_code = read_output(output)
+        output = self._client.run_command(command='cat /etc/os-release')
 
-        if exit_code == 0:
-            self._logger.debug(f'Contents of /etc/os-release: {stdout}')
+        if output.exit_code == 0:
+            self._logger.debug(f'Contents of /etc/os-release: {output.stdout}')
 
             # There is a line that starts with "ID=" which has the distro name.
-            matches = re.findall(r'^ID=(.*)$', stdout, re.MULTILINE)
+            matches = re.findall(r'^ID=(.*)$', output.stdout, re.MULTILINE)
             if matches:
                 self._linux_distro = matches[0].strip()
 
@@ -217,7 +207,7 @@ class HostServices:
                 self._logger.debug(f'Distro found: {self._linux_distro}')
 
             # if "VERSION_ID" is in the output, that is the distro version
-            matches = re.findall(r'VERSION_ID=(.*)$', stdout, re.MULTILINE)
+            matches = re.findall(r'VERSION_ID=(.*)$', output.stdout, re.MULTILINE)
             if matches:
                 self._os_version = matches[0].strip()
 
@@ -240,8 +230,7 @@ class HostServices:
         # Determine which service manager is installed. The first one found, wins.
         for mgr in [ServiceManagerType.service, ServiceManagerType.systemctl]:
             output = self._client.run_command(command=f'which {mgr.name}')
-            stdout, exit_code = read_output(output)
-            if exit_code == 0:
+            if output.exit_code == 0:
                 self._service_manager = mgr
                 break
 
@@ -249,31 +238,30 @@ class HostServices:
         """Fetch the operating system version."""
         if self._linux_distro == "amzn":
             # Amazon Linux stores the version in /etc/os-release.
-            output: HostOutput = self._client.run_command(command='cat /etc/os-release')
-            stdout, exit_code = read_output(output)
+            output = self._client.run_command(command='cat /etc/os-release')
 
-            if exit_code == 0:
-                match = re.search(r'VERSION=\"([0-9]+)\"', stdout)
+            if output.exit_code == 0:
+                match = re.search(r'VERSION=\"([0-9]+)\"', output.stdout)
                 if match:
                     self._os_version = match.group(1)
 
         elif self._linux_distro == "centos":
             # Centos stores its version information in /etc/centos-release
-            output: HostOutput = self._client.run_command(command='cat /etc/centos-release')
+            output = self._client.run_command(command='cat /etc/centos-release')
             if output.exit_code == 0:
-                match = re.search(r'CentOS Linux release ([0-9]+\.[0-9+])"', read_output(output.stdout))
+                match = re.search(r'CentOS Linux release ([0-9]+\.[0-9+])"', output.stdout)
                 if match:
                     self._os_version = match.group(1)
 
         elif self._linux_distro == "rhel":
-            output: HostOutput = self._client.run_command(command='cat /etc/os-release')
-            matches = re.findall(r'^VERSION_ID=(.*)', read_output(output.stdout), re.MULTILINE)
+            output = self._client.run_command(command='cat /etc/os-release')
+            matches = re.findall(r'^VERSION_ID=(.*)', output.stdout, re.MULTILINE)
             if matches:
                 self._os_version = matches[0].strip().rstrip('\r').strip('"')
 
         elif self._linux_distro == "ubuntu":
-            output: HostOutput = self._client.run_command(command='cat /etc/os-release')
+            output = self._client.run_command(command='cat /etc/os-release')
             if output.exit_code == 0:
-                match = re.search(r'VERSION_ID=\"(.*)\"', read_output(output.stdout))
+                match = re.search(r'VERSION_ID=\"(.*)\"', output.stdout)
                 if match:
                     self._os_version = match.group(1)

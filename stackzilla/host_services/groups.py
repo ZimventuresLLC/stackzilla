@@ -2,11 +2,9 @@
 from dataclasses import dataclass
 from typing import List
 
-from pssh.clients import SSHClient
-from pssh.output import HostOutput
-
+from stackzilla.host_services.exceptions import UnsupportedPlatform
 from stackzilla.logger.core import CoreLogger
-from stackzilla.utils.ssh import read_output
+from stackzilla.utils.ssh import SSHClient
 
 
 @dataclass
@@ -21,9 +19,6 @@ class GroupCreateFailure(Exception):
 
 class GroupDeleteFailure(Exception):
     """Raised when the group deletion process fails."""
-
-class UnsupportedPlatform(Exception):
-    """Raised if an unsupported platform is detected."""
 
 class GroupManagement:
     """Interface for group management."""
@@ -45,18 +40,18 @@ class GroupManagement:
             GroupCreateFailure: Raised if any of the create operations fails
         """
         if self._distro == 'amzn':
-            cmd = 'groupadd'
+            base_cmd = 'groupadd'
             for group in groups:
                 if group.id:
-                    cmd = f'{cmd} --gid {group.id} {group.name}'
+                    cmd = f'{base_cmd} --gid {group.id} {group.name}'
                 else:
-                    cmd = f'{cmd} {group.name}'
+                    cmd = f'{base_cmd} {group.name}'
 
-            output: HostOutput = self._client.run_command(command=cmd, sudo=True)
-            stdout, exit_cmd = read_output(output)
+                self._logger.debug(f'Creating group: {cmd}')
+                output = self._client.run_command(command=cmd, sudo=True)
 
-            if exit_cmd:
-                raise GroupCreateFailure(stdout)
+                if output.exit_code:
+                    raise GroupCreateFailure(output.stderr)
 
         else:
             # These distros have differences in the group id command
@@ -69,6 +64,7 @@ class GroupManagement:
                     elif self._distro == 'ubuntu':
                         cmd = f'addgroup --gid {group.id} {group.name}'
                     else:
+                        self._logger.critical('Unsupported platform detected in create_groups', extra={'distro': self._distro})
                         raise UnsupportedPlatform(self._distro)
                 else:
                     if self._distro in['alpine', 'ubuntu']:
@@ -76,14 +72,14 @@ class GroupManagement:
                     elif self._distro in ['centos', 'debian', 'fedora', 'gentoo', 'opensuse-leap', 'rhel', 'slackware']:
                         cmd = f'groupadd {group.name}'
                     else:
-                        raise UnsupportedPlatform()
+                        self._logger.critical('Unsupported platform detected in create_groups', extra={'distro': self._distro})
+                        raise UnsupportedPlatform(self._distro)
 
                 self._logger.debug(f'Creating new group {group.name}')
-                output: HostOutput = self._client.run_command(command=cmd, sudo=True)
-                stdout, exit_code = read_output(output)
+                output = self._client.run_command(command=cmd, sudo=True)
 
-                if exit_code:
-                    raise GroupCreateFailure(stdout)
+                if output.exit_code:
+                    raise GroupCreateFailure(output.stderr)
 
     def delete_groups(self, groups: List[HostGroup]):
         """Delete the specified groups on the remote host.
@@ -98,11 +94,11 @@ class GroupManagement:
             elif self._distro in ['amzn', 'centos', 'debian', 'fedora', 'gentoo', 'opensuse-leap', 'rhel', 'slackware']:
                 cmd = f'groupdel {group.name}'
             else:
-                raise UnsupportedPlatform()
+                self._logger.critical('Unsupported platform detected in delete_groups', extra={'distro': self._distro})
+                raise UnsupportedPlatform(self._distro)
 
             self._logger.debug(message=f'Deleting group: {group.name}')
-            output: HostOutput = self._client.run_command(command=cmd, sudo=True)
-            stdout, exit_cmd = read_output(output)
+            output = self._client.run_command(command=cmd, sudo=True)
 
-            if exit_cmd:
-                raise GroupDeleteFailure(stdout)
+            if output.exit_code:
+                raise GroupDeleteFailure(output.stderr)

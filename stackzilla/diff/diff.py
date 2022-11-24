@@ -13,6 +13,7 @@ from stackzilla.database.exceptions import ResourceNotFound
 from stackzilla.diff.exceptions import (ApplyErrors, NoDiffError,
                                         UnhandledAttributeModifications,
                                         VersionIncompatibility)
+from stackzilla.events.exceptions import HandlerException
 from stackzilla.graph import Graph
 from stackzilla.logger.core import CoreLogger
 from stackzilla.resource import AttributeModified, StackzillaResource
@@ -287,6 +288,9 @@ class StackzillaDiff:
                         diff.src_resource.on_create_done.invoke(sender=diff.src_resource)
                     except ResourceCreateFailure as exc:
                         errors.append(f'{exc.resource_name}: {exc.reason}')
+                    except HandlerException as exc:
+                        errors.append(f'on_create_done handler failed with: {str(exc)}')
+
                 elif diff.result == StackzillaDiffResult.DELETED:
                     try:
                         diff.dest_resource.delete()
@@ -298,6 +302,9 @@ class StackzillaDiff:
                         diff.src_resource.on_create_done.invoke(sender=diff.src_resource)
                     except ResourceCreateFailure as exc:
                         errors.append(f'{exc.resource_name}: {exc.reason}')
+                    except HandlerException as exc:
+                        errors.append(str(exc))
+
                 elif diff.result == StackzillaDiffResult.SAME:
                     continue
                 else:

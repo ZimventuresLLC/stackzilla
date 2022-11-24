@@ -4,14 +4,17 @@ from abc import abstractmethod
 from dataclasses import dataclass
 from typing import List
 
-from pssh.clients import SSHClient
+from pssh.clients.ssh import SSHClient as PSSHClient
+from pssh.exceptions import AuthenticationError
 
 from stackzilla.attribute import StackzillaAttribute
 from stackzilla.host_services import HostServices
 from stackzilla.host_services.groups import HostGroup
 from stackzilla.host_services.users import HostUser
 from stackzilla.resource.base import StackzillaResource
-from stackzilla.resource.compute.exceptions import SSHConnectError
+from stackzilla.resource.compute.exceptions import (NoPackageManagers,
+                                                    SSHConnectError)
+from stackzilla.utils.ssh import SSHClient
 
 
 @dataclass
@@ -62,6 +65,9 @@ class StackzillaCompute(StackzillaResource):
                 host_service.create_users(users=self.users)
 
             if self.packages:
+                if len(host_service.package_managers) == 0:
+                    raise NoPackageManagers('No package managers available')
+
                 pkg_mgr = host_service.package_managers[0]
                 pkg_mgr.install_packages(packages=self.packages)
 
@@ -119,18 +125,20 @@ class StackzillaCompute(StackzillaResource):
         try:
             # If there's a key, use that!
             if credentials.key:
-                client = SSHClient(host=addr.host, port=addr.port,
-                               num_retries=retry_count, retry_delay=retry_delay,
-                               pkey=credentials.key, user=credentials.username)
+                client = PSSHClient(host=addr.host, port=addr.port,
+                                    num_retries=retry_count, retry_delay=retry_delay,
+                                    pkey=credentials.key, user=credentials.username)
             else:
-                client = SSHClient(host=addr.host, port=addr.port,
-                                num_retries=retry_count, retry_delay=retry_delay,
-                                password=credentials.password, user=credentials.username)
+                client = PSSHClient(host=addr.host, port=addr.port,
+                                    num_retries=retry_count, retry_delay=retry_delay,
+                                    password=credentials.password, user=credentials.username)
 
+        except AuthenticationError as err:
+            raise SSHConnectError(f'Authentication failed: {str(err)}') from err
         except ConnectionRefusedError as err:
-            raise SSHConnectError(str(err)) from err
+            raise SSHConnectError(f'Connection error: {str(err)}') from err
 
-        return client
+        return SSHClient(client=client)
 
     def wait_for_ssh(self, retry_count: int, retry_delay: int):
         """Wait for an SSH connection to become available.

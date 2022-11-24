@@ -47,6 +47,11 @@ LOGGING_CONFIG = {
             'level': 'DEBUG',
             'propagate': False
         },
+         'stackzilla.host-services': {
+            'handlers': ['core'],
+            'level': 'DEBUG',
+            'propagate': False
+        },
         'stackzilla.resource': {
             'handlers': ['core'],
             'level': 'DEBUG',

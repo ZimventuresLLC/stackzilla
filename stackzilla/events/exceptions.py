@@ -8,3 +8,6 @@ class HandlerNotFound(Exception):
 
 class ParameterMissing(Exception):
     """Raised when a required parameter is missing from a handler."""
+
+class HandlerException(Exception):
+    """Raised when any handler throws an exception."""

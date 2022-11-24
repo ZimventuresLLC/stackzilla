@@ -2,10 +2,7 @@
 from abc import abstractmethod
 from typing import List, Type
 
-from pssh.clients import SSHClient
-from pssh.output import HostOutput
-
-from stackzilla.utils.ssh import read_output
+from stackzilla.utils.ssh import SSHClient
 
 
 class InstallError(Exception):
@@ -55,25 +52,23 @@ class APK(PackageManager):
     @classmethod
     def exists(cls, ssh_client: SSHClient) -> bool:
         """Check if APK is present on the system."""
-        output: HostOutput = ssh_client.run_command(command='which apk')
-        _, exit_code = read_output(output)
-        return exit_code == 0
+        output = ssh_client.run_command(command='which apk')
+
+        return output.exit_code == 0
 
     def install_packages(self, packages: List[str]) -> None:
         """Install packages using APK."""
         package_list = ' '.join(packages)
         output = self.client.run_command(f'apk add --no-progress {package_list}')
-        stdout, exit_code = read_output(output)
-        if exit_code:
-            raise InstallError(stdout)
+        if output.exit_code:
+            raise InstallError(output.stderr)
 
     def uninstall_packages(self, packages: List[str]) -> None:
         """Uninstall packages using APK."""
         package_list = ' '.join(packages)
         output = self.client.run_command(f'apk del --no-progress {package_list}')
-        stdout, exit_code = read_output(output)
-        if exit_code:
-            raise UninstallError(stdout)
+        if output.exit_code:
+            raise UninstallError(output.stderr)
 
 class APT(PackageManager):
     """Advanced Packaging Tool."""
@@ -86,25 +81,22 @@ class APT(PackageManager):
     @classmethod
     def exists(cls, ssh_client: SSHClient) -> bool:
         """Check if APT is present on the system."""
-        output: HostOutput = ssh_client.run_command(command='which apt')
-        _, exit_code = read_output(output)
-        return exit_code == 0
+        output = ssh_client.run_command(command='which apt')
+        return output.exit_code == 0
 
     def install_packages(self, packages: List[str]) -> None:
         """Install packages using APT."""
         package_list = ' '.join(packages)
         output = self.client.run_command(f'apt install -y {package_list}', sudo=True)
-        stdout, exit_code = read_output(output)
-        if exit_code:
-            raise InstallError(stdout)
+        if output.exit_code:
+            raise InstallError(output.stderr)
 
     def uninstall_packages(self, packages: List[str]) -> None:
         """Uninstall packages using APT."""
         package_list = ' '.join(packages)
         output = self.client.run_command(f'apt remove -y {package_list}', sudo=True)
-        stdout, exit_code = read_output(output)
-        if exit_code:
-            raise UninstallError(stdout)
+        if output.exit_code:
+            raise UninstallError(output.stderr)
 
 class YUM(PackageManager):
     """Yellowdog Updater, Modified (YUM)."""
@@ -117,25 +109,22 @@ class YUM(PackageManager):
     @classmethod
     def exists(cls, ssh_client: SSHClient) -> bool:
         """Check if YUM is present on the system."""
-        output: HostOutput = ssh_client.run_command(command='which yum')
-        _, exit_code = read_output(output)
-        return exit_code == 0
+        output = ssh_client.run_command(command='which yum')
+        return output.exit_code == 0
 
     def install_packages(self, packages: List[str]) -> None:
         """Install packages using YUM."""
         package_list = ' '.join(packages)
         output = self.client.run_command(f'yum install -y {package_list}', sudo=True)
-        stdout, exit_code = read_output(output)
-        if exit_code:
-            raise InstallError(stdout)
+        if output.exit_code:
+            raise InstallError(output.stderr)
 
     def uninstall_packages(self, packages: List[str]) -> None:
         """Uninstall packages using YUM."""
         package_list = ' '.join(packages)
         output = self.client.run_command(f'yum remove -y {package_list}', sudo=True)
-        stdout, exit_code = read_output(output)
-        if exit_code:
-            raise UninstallError(stdout)
+        if output.exit_code:
+            raise UninstallError(output.stderr)
 
 class Emerge(PackageManager):
     """CLI interface for Portage (the Gentoo package manager)."""
@@ -148,25 +137,22 @@ class Emerge(PackageManager):
     @classmethod
     def exists(cls, ssh_client: SSHClient) -> bool:
         """Check if Emerge is present on the system."""
-        output: HostOutput = ssh_client.run_command(command='which emerge')
-        _, exit_code = read_output(output)
-        return exit_code == 0
+        output = ssh_client.run_command(command='which emerge')
+        return output.exit_code == 0
 
     def install_packages(self, packages: List[str]) -> None:
         """Install packages using Emerge."""
         package_list = ' '.join(packages)
         output = self.client.run_command(f'emerge --nospinner --quiet-build y {package_list}')
-        stdout, exit_code = read_output(output)
-        if exit_code:
-            raise InstallError(stdout)
+        if output.exit_code:
+            raise InstallError(output.stderr)
 
     def uninstall_packages(self, packages: List[str]) -> None:
         """Uninstall packages using Emerge."""
         package_list = ' '.join(packages)
         output = self.client.run_command(f'emerge --deselect {package_list}')
-        stdout, exit_code = read_output(output)
-        if exit_code:
-            raise UninstallError(stdout)
+        if output.exit_code:
+            raise UninstallError(output.stderr)
 
 class InstallPKG(PackageManager):
     """CLI interface for Portage (the Gentoo package manager)."""
@@ -179,9 +165,8 @@ class InstallPKG(PackageManager):
     @classmethod
     def exists(cls, ssh_client: SSHClient) -> bool:
         """Check if installpkg is present on the system."""
-        output: HostOutput = ssh_client.run_command(command='which installpkg')
-        _, exit_code = read_output(output)
-        return exit_code == 0
+        output = ssh_client.run_command(command='which installpkg')
+        return output.exit_code == 0
 
     def install_packages(self, packages: List[str]) -> None:
         """Install packages using upgradepkg."""
@@ -195,9 +180,8 @@ class InstallPKG(PackageManager):
             package_list += f'{package_url.split("/")[-1]} '
 
         output = self.client.run_command(f'cd /tmp; upgradepkg --install-new {package_list}')
-        stdout, exit_code = read_output(output)
-        if exit_code:
-            raise InstallError(stdout)
+        if output.exit_code:
+            raise InstallError(output.stderr)
 
     def uninstall_packages(self, packages: List[str]) -> None:
         """Uninstall packages using removepkg."""
@@ -208,6 +192,5 @@ class InstallPKG(PackageManager):
             packages_list += f'{package_url.split("/")[-1]} '
 
         output = self.client.run_command(f'cd /tmp; ugpradepkg --install-new {package_list}')
-        stdout, exit_code = read_output(output)
-        if exit_code:
-            raise UninstallError(stdout)
+        if output.exit_code:
+            raise UninstallError(output.stderr)
