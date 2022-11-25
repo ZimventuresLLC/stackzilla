@@ -52,6 +52,11 @@ LOGGING_CONFIG = {
             'level': 'DEBUG',
             'propagate': False
         },
+        'stackzilla.package-manager': {
+            'handlers': ['core'],
+            'level': 'DEBUG',
+            'propagate': False
+        },
         'stackzilla.resource': {
             'handlers': ['core'],
             'level': 'DEBUG',
