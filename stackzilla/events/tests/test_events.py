@@ -7,7 +7,8 @@ from typing import Dict
 import pytest
 
 from stackzilla.events import StackzillaEvent
-from stackzilla.events.exceptions import (HandlerException, HandlerNotFound, ParameterMissing,
+from stackzilla.events.exceptions import (HandlerException, HandlerNotFound,
+                                          ParameterMissing,
                                           UnsupportedHandlerType)
 from stackzilla.resource import StackzillaResource
 

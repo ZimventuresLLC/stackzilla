@@ -2,6 +2,7 @@
 from abc import abstractmethod
 from typing import List, Type
 
+from stackzilla.logger.core import CoreLogger
 from stackzilla.utils.ssh import SSHClient
 
 
@@ -17,6 +18,7 @@ class PackageManager:
     def __init__(self, ssh_client: SSHClient) -> None:
         """Default construcor. Saves off SSH client."""
         self.client: SSHClient = ssh_client
+        self.logger: CoreLogger = CoreLogger(component='package-manager')
 
     @classmethod
     def name(cls) -> str:
@@ -53,20 +55,23 @@ class APK(PackageManager):
     def exists(cls, ssh_client: SSHClient) -> bool:
         """Check if APK is present on the system."""
         output = ssh_client.run_command(command='which apk')
-
         return output.exit_code == 0
 
     def install_packages(self, packages: List[str]) -> None:
         """Install packages using APK."""
         package_list = ' '.join(packages)
-        output = self.client.run_command(f'apk add --no-progress {package_list}')
+        cmd = f'apk add --no-progress {package_list}'
+        self.logger.debug(message=cmd)
+        output = self.client.run_command(command=cmd)
         if output.exit_code:
             raise InstallError(output.stderr)
 
     def uninstall_packages(self, packages: List[str]) -> None:
         """Uninstall packages using APK."""
         package_list = ' '.join(packages)
-        output = self.client.run_command(f'apk del --no-progress {package_list}')
+        cmd = f'apk del --no-progress {package_list}'
+        self.logger.debug(message=cmd)
+        output = self.client.run_command(command=cmd)
         if output.exit_code:
             raise UninstallError(output.stderr)
 
@@ -86,16 +91,29 @@ class APT(PackageManager):
 
     def install_packages(self, packages: List[str]) -> None:
         """Install packages using APT."""
-        package_list = ' '.join(packages)
-        output = self.client.run_command(f'apt install -y {package_list}', sudo=True)
+        # Update the package manager first...
+        self.logger.debug('Updating apt')
+        output = self.client.run_command('apt update', sudo=True)
         if output.exit_code:
+            self.logger.critical(f'apt update failed: {output.stderr}')
+            raise InstallError(output.stderr)
+
+        package_list = ' '.join(packages)
+        cmd = f'apt install -y {package_list}'
+        self.logger.debug(message=cmd)
+        output = self.client.run_command(command=cmd, sudo=True)
+        if output.exit_code:
+            self.logger.critical(f'apt install failed: {output.stderr}')
             raise InstallError(output.stderr)
 
     def uninstall_packages(self, packages: List[str]) -> None:
         """Uninstall packages using APT."""
         package_list = ' '.join(packages)
-        output = self.client.run_command(f'apt remove -y {package_list}', sudo=True)
+        cmd = f'apt remove -y {package_list}'
+        self.logger.debug(message=cmd)
+        output = self.client.run_command(command=cmd, sudo=True)
         if output.exit_code:
+            self.logger.critical(f'apt remove failed with: {output.stderr}')
             raise UninstallError(output.stderr)
 
 class YUM(PackageManager):
@@ -115,16 +133,23 @@ class YUM(PackageManager):
     def install_packages(self, packages: List[str]) -> None:
         """Install packages using YUM."""
         package_list = ' '.join(packages)
-        output = self.client.run_command(f'yum install -y {package_list}', sudo=True)
+        cmd = f'yum install -y {package_list}'
+        self.logger.debug(message=cmd)
+        output = self.client.run_command(command=cmd, sudo=True)
         if output.exit_code:
-            raise InstallError(output.stderr)
+            combined = output.stderr + output.stderr
+            self.logger.critical(f'yum install failed: {combined}')
+            raise InstallError(combined)
 
     def uninstall_packages(self, packages: List[str]) -> None:
         """Uninstall packages using YUM."""
         package_list = ' '.join(packages)
-        output = self.client.run_command(f'yum remove -y {package_list}', sudo=True)
+        cmd = f'yum remove -y {package_list}'
+        self.logger.debug(message=cmd)
+        output = self.client.run_command(command=cmd, sudo=True)
         if output.exit_code:
-            raise UninstallError(output.stderr)
+            combined = output.stderr + output.stderr
+            raise UninstallError(combined)
 
 class Emerge(PackageManager):
     """CLI interface for Portage (the Gentoo package manager)."""
@@ -143,15 +168,21 @@ class Emerge(PackageManager):
     def install_packages(self, packages: List[str]) -> None:
         """Install packages using Emerge."""
         package_list = ' '.join(packages)
-        output = self.client.run_command(f'emerge --nospinner --quiet-build y {package_list}')
+        cmd = f'emerge --nospinner --quiet-build y {package_list}'
+        self.logger.debug(message=cmd)
+        output = self.client.run_command(command=cmd)
         if output.exit_code:
+            self.logger.critical(f'emerge failed with: {output.stderr}')
             raise InstallError(output.stderr)
 
     def uninstall_packages(self, packages: List[str]) -> None:
         """Uninstall packages using Emerge."""
         package_list = ' '.join(packages)
-        output = self.client.run_command(f'emerge --deselect {package_list}')
+        cmd = f'emerge --deselect {package_list}'
+        self.logger.debug(message=cmd)
+        output = self.client.run_command(command=cmd)
         if output.exit_code:
+            self.logger.critical(f'emerge failed with: {output.stderr}')
             raise UninstallError(output.stderr)
 
 class InstallPKG(PackageManager):
@@ -173,14 +204,20 @@ class InstallPKG(PackageManager):
         # First, dowload all of the packages to /tmp
         package_list = ''
         for pkg in packages:
-            self.client.run_command(f'cd /tmp; wget {pkg}')
+            self.logger.debug(f'Downloading {pkg} to /tmp')
+            output = self.client.run_command(f'cd /tmp; wget {pkg}')
+            if output.exit_code:
+                self.logger.critical(f'Download failed with: {output.stderr}')
+                raise InstallError(output.stderr)
 
             # Build a list of package names that we'll send to the upgradepkg command
             package_url = pkg[1]
             package_list += f'{package_url.split("/")[-1]} '
 
+        self.logger.debug(f'Installing {package_list}')
         output = self.client.run_command(f'cd /tmp; upgradepkg --install-new {package_list}')
         if output.exit_code:
+            self.logger.critical(f'Install failed with: {output.stderr}')
             raise InstallError(output.stderr)
 
     def uninstall_packages(self, packages: List[str]) -> None:
@@ -191,6 +228,8 @@ class InstallPKG(PackageManager):
             package_url = pkg[1]
             packages_list += f'{package_url.split("/")[-1]} '
 
+        self.logger.debug(f'Uninstalling {package_list}')
         output = self.client.run_command(f'cd /tmp; ugpradepkg --install-new {package_list}')
         if output.exit_code:
+            self.logger.critical(f'Uninstall failed with: {output.stderr}')
             raise UninstallError(output.stderr)
