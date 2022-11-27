@@ -234,3 +234,96 @@ The root of the blueprint (`./my_bp`) is the root of relative imports. Navigatin
 ```python
 from ..server.primary import MyPrimaryServer
 ```
+
+## Host Services<i class="fal fa-computer-classic"></i>
+
+As you're likely aware at this point, all Stackzilla resources inherit from the `StackzillaResource` class. Stackzilla also provides another important class, `StackzillaCompute`.  Within this class, exists a _host services_ facility which allows you, the blueprint author, to easily configure the host for your needs. For more information about the `StackzillaCompute` class, [head over here](/stackzilla-compute/).
+
+----------------------------------
+
+### Package Management<i class="fas fa-box-open"></i>
+Servers don't do very much without some software installed on them! The `packages` attribute is available for resources which implement the `StackzillaCompute` class. Installation and removal are handled with whatever package manager is available on the host system. All you need to do is provide a list of package names to be installed.
+
+##### Example
+In this excample blueprint, Stackzilla will install a webserver (Apache). By declaring `httpd` in the `packages` list, Stackzilla will ensure it is installed either on the initial apply or subsequent applies.
+
+```python
+from stackzilla.provider.aws.ec2.instance import AWSInstance
+
+class MyServer(AWSInstance):
+
+    def __init__(self):
+        super().__init__()
+        self.name = 'my-demo-server'
+        self.region = 'us-east-1'
+        self.type = 't2.micro'
+        self.security_groups = [AllowSSH]
+        self.ssh_key = MyKey
+        self.ami = 'ami-0c4e4b4eb2e11d1d4' # Amazon Linux 2 AMI
+        self.ssh_username = 'ec2-user'
+        self.packages = ['httpd']
+```
+
+### Group Management<i class="fas fa-users-class"></i>
+[Linux groups](https://www.linux.com/topic/desktop/how-manage-users-groups-linux/) allow administrators a way to apply ACL-based permissions to the file system. In Stackzilla, managing a group is as simple as adding a `groups` attribute definition on your blueprint.
+
+In this example blueprint, a server is defined with a single group, `netadmins`
+
+```python
+from stackzilla.host_services.groups import HostGroup
+from stackzilla.provider.linode.instance import LinodeInstance
+
+class MyServer(LinodeInstance):
+    def __init__(self):
+        super().__init__()
+        self.groups = [HostGroup(name='netadmins')]
+        self.image = 'linode/alpine3.12'
+        self.label = 'Stackzilla_Test-Linode.1'
+        self.private_ip = False
+        self.region = 'us-east'
+        self.ssh_key = MyKey
+        self.type = 'g6-nanode-1'
+```
+
+The `groups` attribute is available through any resource which implements the `StackzillaCompute` interface. The expected value is a list of `HostGroup` dataclasses.
+
+#### `HostGroup`
+The `HostGroup` dataclass contains two fields:
+- `name`: The name of the group
+- `id`: The integer-based ID of the group (optional)
+
+{% capture groups_modification_note %}
+The <code>groups</code> attribute does not currently support graceful modification of <code>HostGroup</code> items which have already been deployed. If a group is modified in the blueprint, it will be deleted and created again.
+{% endcapture %}
+{% include note-warning.html content=groups_modification_note %}
+
+### User Management<i class="fal fa-user"></i>
+In addition to group management, Stackzilla offers Linux user management. Users are configured by specifying `HostUser` items in the `users` attribute.
+
+##### Example
+```python
+class MyServer(AWSInstance):
+
+    def __init__(self):
+        super().__init__()
+        # ...
+        self.groups = [HostGroup(name='netadmins')]
+        self.users = [HostUser(name='zim', password=os.getenv('ZIM_PASS'), extra_groups='netadmins')]
+```
+
+#### `HostUser`
+The `HostUser` dataclass contains the following fields:
+
+- `name`: The name for the user
+**Optional attributes**
+- `extra_groups`: A comma separated list of additional groups the user should belong to
+- `group`: Name of the group to create for the user
+- `home_dir`: Full path to the user's home directory
+- `id`: The integer based ID of the new user
+- `password`: The password for the user to login
+- `shell`: Path to the shell to be used when the user logs in
+
+{% capture modification_note %}
+The <code>users</code> attribute does not currently support graceful modification of <code>HostUser</code> items which have already been deployed. If a user is modified in the blueprint, it will be deleted and created again.
+{% endcapture %}
+{% include note-warning.html content=modification_note %}
