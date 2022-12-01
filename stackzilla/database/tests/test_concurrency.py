@@ -1,6 +1,7 @@
 """Verify that multi-threaded database access works."""
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from time import sleep
+from typing import List
 from uuid import UUID, uuid4
 
 from stackzilla.attribute import StackzillaAttribute
@@ -20,7 +21,7 @@ class Resource(StackzillaResource):
     def version(cls) -> ResourceVersion:
         return ResourceVersion(major=1, minor=0, build=0, name='FCS')
 
-def db_write_worker(database: StackzillaSQLiteDB, range: list[int]):
+def db_write_worker(database: StackzillaSQLiteDB, range: List[int]):
     """Dynamically create resource classes and add them to the database."""
     for index in range:
         new_class = type(f'MyResource{index}', (Resource,), {})
