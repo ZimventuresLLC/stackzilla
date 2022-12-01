@@ -184,7 +184,7 @@ class StackzillaDiff:
 
         return self._result
 
-    # pylint: disable=too-many-branches,too-many-locals,too-many-statements
+    # pylint: disable=too-many-locals,too-many-branches
     def apply(self):
         """Resolve the blueprint graph and apply differences."""
         # Create a graph from the source blueprint
@@ -223,6 +223,8 @@ class StackzillaDiff:
 
             with ThreadPoolExecutor() as executor:
 
+                self._logger.debug(f'Resources being applied in this phase: {phase}')
+
                 # Apply the diff for all of the resources in this phase
                 futures = []
                 for resource in phase:
@@ -246,9 +248,14 @@ class StackzillaDiff:
             if errors:
                 raise ApplyErrors(errors=errors)
 
+    # pylint: disable=too-many-branches,too-many-locals,too-many-statements,line-too-long
     def _apply_resource(self, obj: StackzillaResource):
-
+        """Apply the diff for a spacified resource."""
         errors = []
+
+        # Ugly as sin, but has to be done per this: https://parallel-ssh.readthedocs.io/en/latest/scaling.html?highlight=thread#scaling
+        # pylint: disable=unused-import,import-outside-toplevel
+        import pssh.clients.ssh
 
         # Need to load the resource from the database so that any dynamic attributes are present
         # NOTE: If the resource is not in the database, no big deal, we'll just silently fail
