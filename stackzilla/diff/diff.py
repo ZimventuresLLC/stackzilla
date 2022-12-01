@@ -1,4 +1,5 @@
 """Module that has all of the logic for diffing imported blueprints."""
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass
 from enum import Enum, auto
 from io import StringIO
@@ -183,7 +184,7 @@ class StackzillaDiff:
 
         return self._result
 
-    # pylint: disable=too-many-branches,too-many-locals,too-many-statements
+    # pylint: disable=too-many-locals,too-many-branches
     def apply(self):
         """Resolve the blueprint graph and apply differences."""
         # Create a graph from the source blueprint
@@ -218,104 +219,131 @@ class StackzillaDiff:
             StackzillaDB.db.create_blueprint_module(path=module.path, data=module.data)
 
         errors: List[str] = []
-        # pylint: disable=too-many-nested-blocks
         for phase in phases:
 
-            # Get the diffs for each resource in the phase
-            for resource in phase:
-                obj = resource()
+            with ThreadPoolExecutor() as executor:
 
-                # Need to load the resource from the database so that any dynamic attributes are present
-                # NOTE: If the resource is not in the database, no big deal, we'll just silently fail
-                obj.load_from_db(silent_fail=True)
+                self._logger.debug(f'Resources being applied in this phase: {phase}')
 
-                diff: StackzillaResourceDiff = self._result.resource_diffs[obj.path()]
+                # Apply the diff for all of the resources in this phase
+                futures = []
+                for resource in phase:
 
-                if diff.result == StackzillaDiffResult.CONFLICT:
+                    obj = resource()
+                    futures.append(executor.submit(self._apply_resource, obj=obj))
 
-                    # Build a dictionary of AttributeModified objects to track what has and hasn't been handled.
-                    modified_attrs = {}
-                    for attr_name, attr_diff in diff.attribute_diffs.items():
-                        modified_attrs[attr_name] = AttributeModified(name=attr_name,
-                                                                      previous_value=attr_diff.dest_value,
-                                                                      new_value=attr_diff.src_value,
-                                                                      handled=False)
+                # Process the results
+                for result in as_completed(futures):
+                    exception = result.exception()
+                    if exception:
 
-                    # Invoke any StackzillaResource::*_modified() handlers
-                    for attr_name, attr_diff in diff.attribute_diffs.items():
-                        # _on_attribute_modified() should only be accessed from here.
-                        # pylint: disable=protected-access
-                        try:
-                            if obj._on_attribute_modified(attribute_name=attr_name,
-                                                          previous_value=attr_diff.dest_value,
-                                                          new_value=attr_diff.src_value):
+                        # If this is a provider error, raise it immediately.
+                        if isinstance(exception, UnhandledAttributeModifications):
+                            raise exception
 
-                                # Note that the attribute modification has been handled
-                                modified_attrs[attr_name].handled = True
-                        except AttributeModifyFailure as exc:
-                            modified_attrs[attr_name].error = exc
-
-                    # Invoke the "all-in-one" handler
-                    obj.on_attributes_modified(attributes=modified_attrs)
-
-                    # Check for any unhandled attributes
-                    unhandled_attributes = []
-                    for attribute in modified_attrs.values():
-                        # Just log an error and continue onward. Do NOT persist the value to the database.
-                        if attribute.error:
-                            errors.append(f'{obj.path(remove_prefix=True)}: {attribute.name} - {attribute.error.reason} ')
-                        elif attribute.handled is False:
-                            # The attribute wasn't handled - get ready to log a failure!
-                            unhandled_attributes.append(attribute)
+                        if isinstance(exception, ApplyErrors):
+                            errors.extend(exception.errors)
                         else:
-                            # Persist the attribute to the database
-                            StackzillaDB.db.update_attribute(resource=obj, name=attribute.name, value=attribute.new_value)
-
-                    if unhandled_attributes:
-
-                        if errors:
-                            self._logger.critical('Attribute modify encountered during unhandled attribute exception')
-                            self._logger.critical(errors)
-
-                        # Since this is actually a provider failure (usually hit during creation of the provider) it will
-                        # raise its own excption and "mask" the modify attribute failures. The developer should fix this
-                        # issue first!
-                        raise UnhandledAttributeModifications(unhandled_attributes)
-                elif diff.result == StackzillaDiffResult.REBUILD_REQUIRED:
-                    diff.dest_resource.delete()
-                    try:
-                        diff.src_resource.create()
-                        diff.src_resource.on_create_done.invoke(sender=diff.src_resource)
-                    except ResourceCreateFailure as exc:
-                        errors.append(f'{exc.resource_name}: {exc.reason}')
-                    except HandlerException as exc:
-                        errors.append(f'on_create_done handler failed with: {str(exc)}')
-
-                elif diff.result == StackzillaDiffResult.DELETED:
-                    try:
-                        diff.dest_resource.delete()
-                    except ResourceDeleteFailure as exc:
-                        errors.append(f'{exc.resource_name}: {exc.reason}')
-                elif diff.result == StackzillaDiffResult.NEW:
-                    try:
-                        diff.src_resource.create()
-                        diff.src_resource.on_create_done.invoke(sender=diff.src_resource)
-                    except ResourceCreateFailure as exc:
-                        errors.append(f'{exc.resource_name}: {exc.reason}')
-                    except HandlerException as exc:
-                        errors.append(str(exc))
-
-                elif diff.result == StackzillaDiffResult.SAME:
-                    continue
-                else:
-                    raise RuntimeError('Unhandled state')
-
-            # If there were errors in this phase, do not continue
+                            errors.append(str(exception))
             if errors:
                 raise ApplyErrors(errors=errors)
 
+    # pylint: disable=too-many-branches,too-many-locals,too-many-statements,line-too-long
+    def _apply_resource(self, obj: StackzillaResource):
+        """Apply the diff for a spacified resource."""
+        errors = []
 
+        # Ugly as sin, but has to be done per this: https://parallel-ssh.readthedocs.io/en/latest/scaling.html?highlight=thread#scaling
+        # pylint: disable=unused-import,import-outside-toplevel
+        import pssh.clients.ssh
 
+        # Need to load the resource from the database so that any dynamic attributes are present
+        # NOTE: If the resource is not in the database, no big deal, we'll just silently fail
+        obj.load_from_db(silent_fail=True)
+
+        diff: StackzillaResourceDiff = self._result.resource_diffs[obj.path()]
+
+        if diff.result == StackzillaDiffResult.CONFLICT:
+
+            # Build a dictionary of AttributeModified objects to track what has and hasn't been handled.
+            modified_attrs = {}
+            for attr_name, attr_diff in diff.attribute_diffs.items():
+                modified_attrs[attr_name] = AttributeModified(name=attr_name,
+                                                                previous_value=attr_diff.dest_value,
+                                                                new_value=attr_diff.src_value,
+                                                                handled=False)
+
+            # Invoke any StackzillaResource::*_modified() handlers
+            for attr_name, attr_diff in diff.attribute_diffs.items():
+                # _on_attribute_modified() should only be accessed from here.
+                # pylint: disable=protected-access
+                try:
+                    if obj._on_attribute_modified(attribute_name=attr_name,
+                                                    previous_value=attr_diff.dest_value,
+                                                    new_value=attr_diff.src_value):
+
+                        # Note that the attribute modification has been handled
+                        modified_attrs[attr_name].handled = True
+                except AttributeModifyFailure as exc:
+                    modified_attrs[attr_name].error = exc
+
+            # Invoke the "all-in-one" handler
+            obj.on_attributes_modified(attributes=modified_attrs)
+
+            # Check for any unhandled attributes
+            unhandled_attributes = []
+            for attribute in modified_attrs.values():
+                # Just log an error and continue onward. Do NOT persist the value to the database.
+                if attribute.error:
+                    errors.append(f'{obj.path(remove_prefix=True)}: {attribute.name} - {attribute.error.reason} ')
+                elif attribute.handled is False:
+                    # The attribute wasn't handled - get ready to log a failure!
+                    unhandled_attributes.append(attribute)
+                else:
+                    # Persist the attribute to the database
+                    StackzillaDB.db.update_attribute(resource=obj, name=attribute.name, value=attribute.new_value)
+
+            if unhandled_attributes:
+
+                if errors:
+                    self._logger.critical('Attribute modify encountered during unhandled attribute exception')
+                    self._logger.critical(errors)
+
+                # Since this is actually a provider failure (usually hit during creation of the provider) it will
+                # raise its own excption and "mask" the modify attribute failures. The developer should fix this
+                # issue first!
+                raise UnhandledAttributeModifications(unhandled_attributes)
+        elif diff.result == StackzillaDiffResult.REBUILD_REQUIRED:
+            diff.dest_resource.delete()
+            try:
+                diff.src_resource.create()
+                diff.src_resource.on_create_done.invoke(sender=diff.src_resource)
+            except ResourceCreateFailure as exc:
+                errors.append(f'{exc.resource_name}: {exc.reason}')
+            except HandlerException as exc:
+                errors.append(f'on_create_done handler failed with: {str(exc)}')
+
+        elif diff.result == StackzillaDiffResult.DELETED:
+            try:
+                diff.dest_resource.delete()
+            except ResourceDeleteFailure as exc:
+                errors.append(f'{exc.resource_name}: {exc.reason}')
+        elif diff.result == StackzillaDiffResult.NEW:
+            try:
+                diff.src_resource.create()
+                diff.src_resource.on_create_done.invoke(sender=diff.src_resource)
+            except ResourceCreateFailure as exc:
+                errors.append(f'{exc.resource_name}: {exc.reason}')
+            except HandlerException as exc:
+                errors.append(str(exc))
+
+        elif diff.result == StackzillaDiffResult.SAME:
+            return
+        else:
+            raise RuntimeError('Unhandled state')
+
+        if errors:
+            raise ApplyErrors(errors=errors)
 
     # pylint: disable=too-many-branches,too-many-locals
     def diff(self, source: Optional[StackzillaBlueprint], destination: Optional[StackzillaBlueprint]):

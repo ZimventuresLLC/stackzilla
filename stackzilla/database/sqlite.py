@@ -6,20 +6,21 @@ import os
 import pickle
 import sqlite3
 import sys
+from contextlib import contextmanager
 from sqlite3 import Connection, Cursor
+from threading import Lock
 from typing import Any, List, Optional
 
 from stackzilla.database.base import StackzillaDB, StackzillaDBBase
 from stackzilla.database.exceptions import (AttributeNotFound,
                                             BlueprintModuleNotFound,
                                             BlueprintPackageNotFound,
-                                            CreateAttributeFailure,
                                             CreateBlueprintModuleFailure,
                                             CreateBlueprintPackageFaiure,
                                             CreateResourceFailure,
+                                            DatabaseCommitError,
                                             DatabaseExists, DatabaseNotFound,
                                             DatabaseNotOpen,
-                                            DuplicateAttribute,
                                             DuplicateBlueprintModule,
                                             DuplicateBlueprintPackage,
                                             MetadataKeyNotFound,
@@ -43,6 +44,7 @@ class StackzillaSQLiteDB(StackzillaDBBase):
         """
         super().__init__(name=f'{name}.db')
 
+        self._lock: Lock = Lock()
         self._db: Optional[Connection] = None
         self._cursor: Optional[Cursor] = None
         self._logger = CoreLogger(component='StackzillaSQLiteDB')
@@ -53,6 +55,47 @@ class StackzillaSQLiteDB(StackzillaDBBase):
             assert StackzillaDB.db is None
 
         StackzillaDB.db = self
+
+    @contextmanager
+    def lock_db(self):
+        """Context manager to allow wrapping the database lock."""
+        self._lock.acquire()
+        try:
+            yield
+        finally:
+            self._lock.release()
+
+    @contextmanager
+    def execute(self, query: str, params: dict = None, commit: bool = True):
+        """Context manager for executing a database query.
+
+        Args:
+            query (str): The SQL for the query
+            params (dict, optional): Parameters to pass into the query. Defaults to None.
+            commit (bool, optional): A boolean to indicate if a commit should be made after the query. Defaults to True.
+
+        Yields:
+            _type_: An SQLite Cursor object
+        """
+        self._lock.acquire()
+
+        try:
+            if params:
+                yield self.connection.execute(query, params)
+            else:
+                yield self.connection.execute(query)
+        # pylint: disable=try-except-raise
+        except:
+            raise
+        else:
+            # Only perform the commit if no execption was raised!
+            if commit:
+                try:
+                    self.connection.commit()
+                except sqlite3.OperationalError as error:
+                    raise DatabaseCommitError(error) from error
+        finally:
+            self._lock.release()
 
     @property
     def connection(self) -> Connection:
@@ -72,13 +115,13 @@ class StackzillaSQLiteDB(StackzillaDBBase):
             DatabaseExists: Raised if the file already exists.
         """
         if in_memory:
-            self._db = sqlite3.connect('file::memory:?cache=shared')
+            self._db = sqlite3.connect('file::memory:?cache=shared', check_same_thread=False)
         else:
             # If the database already exists, raise an exception
             if os.path.exists(self.name):
                 raise DatabaseExists
 
-            self._db = sqlite3.connect(self.name)
+            self._db = sqlite3.connect(self.name, check_same_thread=False)
 
         # Access query results by column ID instead of by index
         self._db.row_factory = sqlite3.Row
@@ -141,7 +184,7 @@ class StackzillaSQLiteDB(StackzillaDBBase):
         if os.path.exists(self.name) is False:
             raise DatabaseNotFound
 
-        self._db = sqlite3.connect(self.name)
+        self._db = sqlite3.connect(self.name, check_same_thread=False)
 
         # Access query results by column ID instead of by index
         self._db.row_factory = sqlite3.Row
@@ -164,7 +207,6 @@ class StackzillaSQLiteDB(StackzillaDBBase):
         if self._db is None:
             return
 
-        self.connection.commit()
         self.connection.close()
         self._db = None
         self._cursor = None
@@ -182,7 +224,9 @@ class StackzillaSQLiteDB(StackzillaDBBase):
             Any: The value associated with the key.
         """
         sql = f'SELECT value FROM {StackzillaSQLiteDB.MetadataTableName}  WHERE key = ?'
-        item = self.connection.execute(sql, (key,)).fetchone()
+        item = None
+        with self.execute(query=sql, params=(key,)) as cursor:
+            item = cursor.fetchone()
 
         if item is None:
             raise MetadataKeyNotFound
@@ -199,8 +243,9 @@ class StackzillaSQLiteDB(StackzillaDBBase):
         """
         json_value = json.dumps(value)
         self._logger.debug(f'Setting metadata on {key = }')
-        self._cursor.execute(f'REPLACE INTO {StackzillaSQLiteDB.MetadataTableName} (key, value) VALUES (?,?)', (key, json_value))
-        self.connection.commit()
+        query = f'REPLACE INTO {StackzillaSQLiteDB.MetadataTableName} (key, value) VALUES (?,?)'
+        with self.execute(query=query, params=(key, json_value)):
+            pass
 
     def delete_metadata(self, key: str) -> None:
         """Delete the specified metadata entry.
@@ -214,8 +259,9 @@ class StackzillaSQLiteDB(StackzillaDBBase):
         if self.check_metadata(key=key) is False:
             raise MetadataKeyNotFound
 
-        self.connection.execute(f'DELETE FROM {StackzillaSQLiteDB.MetadataTableName}  WHERE key = ?', (key,))
-        self.connection.commit()
+        query = f'DELETE FROM {StackzillaSQLiteDB.MetadataTableName}  WHERE key = ?'
+        with self.execute(query=query, params=(key,)):
+            pass
 
     def check_metadata(self, key: str) -> bool:
         """Query if the specified metadata key exists.
@@ -226,9 +272,12 @@ class StackzillaSQLiteDB(StackzillaDBBase):
         Returns:
             bool: True if the key exists, False otherwise
         """
-        return self.connection.execute(
-            f'SELECT 1 FROM {StackzillaSQLiteDB.MetadataTableName} WHERE key = ?', (key,)
-        ).fetchone() is not None
+        query = f'SELECT 1 FROM {StackzillaSQLiteDB.MetadataTableName} WHERE key = ?'
+        exists = False
+        with self.execute(query=query, params=(key,)) as cursor:
+            exists = cursor.fetchone() is not None
+
+        return exists
 
     def create_resource(self, resource: StackzillaResource) -> None:
         """Create a new StackzillaResource in the database.
@@ -254,8 +303,28 @@ class StackzillaSQLiteDB(StackzillaDBBase):
                 'version_name': version.name
             }
 
-            self.connection.execute(create_sql, create_params)
-            self.connection.commit()
+            # Do not unlock the database until the resource and all its attributes are created!
+            with self.lock_db():
+                cursor = self._cursor.execute(create_sql, create_params)
+                self.connection.commit()
+
+                resource_id = cursor.lastrowid
+                attr_create_sql = """INSERT INTO StackzillaAttribute ("resource_id",
+                                                                      "name",
+                                                                      "value")
+                                                                      VALUES (:resource_id, :name, :value)"""
+
+                # Crank through all of the attributes and persist them to the database
+                for name in resource.attributes:
+                    insert_data = {
+                        'name': name,
+                        'value': self._value_encode(getattr(resource, name)),
+                        'resource_id': resource_id
+                    }
+
+                    self._cursor.execute(attr_create_sql, insert_data)
+                    self.connection.commit()
+
         except sqlite3.IntegrityError as exc:
             raise CreateResourceFailure() from exc
 
@@ -269,8 +338,9 @@ class StackzillaSQLiteDB(StackzillaDBBase):
             ResourceNotFound: Raised if the resource specified by path does not exist in the database.
         """
         resource_id: int = self._resource_id_from_path(path=path)
-        self.connection.execute('DELETE FROM StackzillaResource WHERE id=:resource_id', {'resource_id': resource_id})
-        self.connection.commit()
+
+        with self.execute(query='DELETE FROM StackzillaResource WHERE id=:resource_id', params={'resource_id': resource_id}):
+            pass
 
     def get_all_resources(self) -> List[StackzillaResource]:
         """Fetch all of the resources available in the databae.
@@ -280,11 +350,17 @@ class StackzillaSQLiteDB(StackzillaDBBase):
         """
         results: List[StackzillaResource] = []
 
-        cursor = self.connection.execute('SELECT * FROM StackzillaResource')
+        # The call to get_resource path can not be made inside of the fetchall() loop because it will
+        # cause a double lock (get_resource() calls execute() as well)
+        # Pass 1: Build a list of all the resource paths
+        resource_paths = []
+        with self.execute(query='SELECT * FROM StackzillaResource') as cursor:
+            for result in cursor.fetchall():
+                resource_paths.append(result['path'])
 
-        for result in cursor.fetchall():
-            # Fetch a StackzillaResource object WITH its parameters field populated
-            results.append(self.get_resource(path=result['path']))
+        # Pass 2: Fetch a StackzillaResource object WITH its parameters field populated
+        for path in resource_paths:
+            results.append(self.get_resource(path=path))
 
         return results
 
@@ -358,46 +434,8 @@ class StackzillaSQLiteDB(StackzillaDBBase):
             "resource_id": self._resource_id_from_path(resource.path())
         }
 
-        self.connection.execute(update_sql, update_data)
-        self.connection.commit()
-
-    def create_attribute(self, resource: StackzillaResource, name: str, value: Any):
-        """Adds a new attribute to the database.
-
-        Args:
-        resource (StackzillaResource): The parent resource of the attribute to be created
-            name (str): The name of the attribute to set the value for
-            value (Any): The value to assign to the attribute
-        """
-        resource_id = self._resource_id_from_path(resource.path())
-        # Ensure that an attribute with the resource_id/name combo doesn't alreadt exist
-        try:
-            self._get_attribute_id(resource=resource, name=name)
-
-            # If we get here, the attribute was found - this is bad!
-            raise DuplicateAttribute
-
-        except AttributeNotFound:
+        with self.execute(query=update_sql, params=update_data):
             pass
-
-        sql = """INSERT INTO StackzillaAttribute ("resource_id",
-                                                "name",
-                                                "value")
-                                                VALUES (:resource_id, :name, :value)"""
-
-        insert_data = {
-            'name': name,
-            'value': self._value_encode(value),
-            'resource_id': resource_id
-        }
-
-        try:
-            self.connection.execute(sql, insert_data)
-            self.connection.commit()
-        except sqlite3.IntegrityError as exc:
-            raise CreateAttributeFailure(str(exc)) from exc
-        except sqlite3.InterfaceError as exc:
-            raise CreateAttributeFailure(str(exc)) from exc
 
     def delete_attribute(self, resource: StackzillaResource, name: str):
         """Delete an attribute previously added to the database.
@@ -412,8 +450,8 @@ class StackzillaSQLiteDB(StackzillaDBBase):
         attribute_id = self._get_attribute_id(resource=resource, name=name)
 
         delete_sql = 'DELETE FROM StackzillaAttribute WHERE id=:attribute_id'
-        self.connection.execute(delete_sql, {'attribute_id': attribute_id})
-        self.connection.commit()
+        with self.execute(query=delete_sql, params={'attribute_id': attribute_id}):
+            pass
 
     def update_attribute(self, resource: StackzillaResource, name: str, value: Any):
         """Update a previously created attribute.
@@ -439,8 +477,8 @@ class StackzillaSQLiteDB(StackzillaDBBase):
             "name": name
         }
 
-        self.connection.execute(update_sql, update_data)
-        self.connection.commit()
+        with self.execute(query=update_sql, params=update_data):
+            pass
 
     def get_attribute(self, resource: StackzillaResource, name: str) -> Any:
         """Fetch a single attribute from the dataase.
@@ -459,11 +497,13 @@ class StackzillaSQLiteDB(StackzillaDBBase):
 
         select_sql = 'SELECT * FROM StackzillaAttribute WHERE resource_id=:resource_id AND name=:name'
         select_args = {'resource_id': resource_id, 'name': name}
-        cursor = self.connection.execute(select_sql, select_args )
 
-        row = cursor.fetchone()
+        row = None
+        with self.execute(query=select_sql, params=select_args, commit=False) as cursor:
+            row = cursor.fetchone()
+
         if row is None:
-            raise AttributeNotFound
+            raise AttributeNotFound(f'{name=} | {resource_id=}')
 
         return self._value_decode(row['value'])
 
@@ -490,8 +530,8 @@ class StackzillaSQLiteDB(StackzillaDBBase):
         }
 
         try:
-            self.connection.execute(sql, insert_data)
-            self.connection.commit()
+            with self.execute(query=sql, params=insert_data):
+                pass
         except sqlite3.IntegrityError as exc:
             raise CreateBlueprintModuleFailure() from exc
 
@@ -508,8 +548,10 @@ class StackzillaSQLiteDB(StackzillaDBBase):
             BlueprintModuleNotFound: Raised when the path does not exist.
         """
         select_sql = 'SELECT * FROM StackzillaBlueprintModule WHERE path=:path'
-        cursor = self.connection.execute(select_sql, {'path': path})
-        row = cursor.fetchone()
+        row = None
+        with self.execute(query=select_sql, params={'path': path}) as cursor:
+            row = cursor.fetchone()
+
         if row is None:
             raise BlueprintModuleNotFound
 
@@ -523,9 +565,9 @@ class StackzillaSQLiteDB(StackzillaDBBase):
         """
         results: List[str] = []
         select_sql = 'SELECT * FROM StackzillaBlueprintModule'
-        cursor = self.connection.execute(select_sql)
-        for row in cursor.fetchall():
-            results.append(row['path'])
+        with self.execute(query=select_sql) as cursor:
+            for row in cursor.fetchall():
+                results.append(row['path'])
 
         return results
 
@@ -551,8 +593,8 @@ class StackzillaSQLiteDB(StackzillaDBBase):
             "id": blueprint_module_id
         }
 
-        self.connection.execute(update_sql, update_data)
-        self.connection.commit()
+        with self.execute(query=update_sql, params=update_data):
+            pass
 
     def delete_blueprint_module(self, path: str) -> None:
         """Delete an existing module.
@@ -565,15 +607,15 @@ class StackzillaSQLiteDB(StackzillaDBBase):
         """
         blueprint_module_id = self._get_blueprint_module_id(path=path)
         delete_sql = 'DELETE FROM StackzillaBlueprintModule WHERE id=:id'
-        self.connection.execute(delete_sql, {'id': blueprint_module_id})
-        self.connection.commit()
 
+        with self.execute(query=delete_sql, params={'id': blueprint_module_id}):
+            pass
 
     def delete_all_blueprint_modules(self) -> None:
         """Delete all of the blueprints from the database."""
         delete_sql = 'DELETE FROM StackzillaBlueprintModule'
-        self.connection.execute(delete_sql)
-        self.connection.commit()
+        with self.execute(query=delete_sql):
+            pass
 
     def create_blueprint_package(self, path: str) -> None:
         """Create a new blueprint package.
@@ -593,8 +635,8 @@ class StackzillaSQLiteDB(StackzillaDBBase):
         }
 
         try:
-            self.connection.execute(sql, insert_data)
-            self.connection.commit()
+            with self.execute(query=sql, params=insert_data):
+                pass
         except sqlite3.IntegrityError as exc:
             raise CreateBlueprintPackageFaiure() from exc
 
@@ -606,14 +648,14 @@ class StackzillaSQLiteDB(StackzillaDBBase):
         """
         blueprint_package_id = self._get_blueprint_package_id(path=path)
         delete_sql = 'DELETE FROM StackzillaBlueprintPackage WHERE id=:id'
-        self.connection.execute(delete_sql, {'id': blueprint_package_id})
-        self.connection.commit()
+        with self.execute(query=delete_sql, params={'id': blueprint_package_id}):
+            pass
 
     def delete_all_blueprint_packages(self) -> None:
         """Delete all of the blueprint packages from the database."""
         delete_sql = 'DELETE FROM StackzillaBlueprintPackage'
-        self.connection.execute(delete_sql)
-        self.connection.commit()
+        with self.execute(query=delete_sql):
+            pass
 
     def get_blueprint_package(self, path: str) -> bool:
         """Queries if a blueprint package exists in the database.
@@ -638,9 +680,10 @@ class StackzillaSQLiteDB(StackzillaDBBase):
         """
         results: List[str] = []
         select_sql = 'SELECT * FROM StackzillaBlueprintPackage'
-        cursor = self.connection.execute(select_sql)
-        for row in cursor.fetchall():
-            results.append(row['path'])
+        with self.execute(query=select_sql, commit=False) as cursor:
+
+            for row in cursor.fetchall():
+                results.append(row['path'])
 
         return results
 
@@ -667,8 +710,10 @@ class StackzillaSQLiteDB(StackzillaDBBase):
             int: The row ID for the module
         """
         select_sql = 'SELECT * FROM StackzillaBlueprintPackage WHERE path=:path'
-        cursor = self.connection.execute(select_sql, {'path': path})
-        row = cursor.fetchone()
+        row = None
+        with self.execute(query=select_sql, params={'path': path}) as cursor:
+            row = cursor.fetchone()
+
         if row is None:
             raise BlueprintPackageNotFound
 
@@ -687,8 +732,10 @@ class StackzillaSQLiteDB(StackzillaDBBase):
             int: The row ID for the module
         """
         select_sql = 'SELECT * FROM StackzillaBlueprintModule WHERE path=:path'
-        cursor = self.connection.execute(select_sql, {'path': path})
-        row = cursor.fetchone()
+        row = None
+        with self.execute(query=select_sql, params={'path': path}, commit=False) as cursor:
+            row = cursor.fetchone()
+
         if row is None:
             raise BlueprintModuleNotFound
 
@@ -711,11 +758,13 @@ class StackzillaSQLiteDB(StackzillaDBBase):
 
         select_sql = 'SELECT * FROM StackzillaAttribute WHERE resource_id=:resource_id AND name=:name'
         select_args = {'resource_id': resource_id, 'name': name}
-        cursor = self.connection.execute(select_sql, select_args )
+        row = None
 
-        row = cursor.fetchone()
+        with self.execute(query=select_sql, params=select_args, commit=False) as cursor:
+            row = cursor.fetchone()
+
         if row is None:
-            raise AttributeNotFound
+            raise AttributeNotFound(f'{name=} | {resource_id=}')
 
         return row['id']
 
@@ -731,13 +780,15 @@ class StackzillaSQLiteDB(StackzillaDBBase):
         Returns:
             int: The SQLite ID of the row for the resource
         """
-        with self.connection:
-            cursor = self.connection.execute('SELECT * FROM StackzillaResource WHERE path=:path', {'path': path})
+        query = 'SELECT * FROM StackzillaResource WHERE path=:path'
+        row = None
+        with self.execute(query=query, params={'path': path}, commit=False) as cursor:
             row = cursor.fetchone()
-            if row is None:
-                raise ResourceNotFound(path)
 
-            return row['id']
+        if row is None:
+            raise ResourceNotFound(path)
+
+        return row['id']
 
     def _resource_from_path(self, path: str) -> dict:
         """Helper method to fetch an entire resource row from a given path.
@@ -751,10 +802,12 @@ class StackzillaSQLiteDB(StackzillaDBBase):
         Returns:
             dict: The row data for the match
         """
-        with self.connection:
-            cursor = self.connection.execute('SELECT * FROM StackzillaResource WHERE path=:path', {'path': path})
+        query = 'SELECT * FROM StackzillaResource WHERE path=:path'
+        row = None
+        with self.execute(query=query, params={'path': path}, commit=False) as cursor:
             row = cursor.fetchone()
-            if row is None:
-                raise ResourceNotFound(path)
 
-            return row
+        if row is None:
+            raise ResourceNotFound(path)
+
+        return row

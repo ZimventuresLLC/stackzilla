@@ -291,9 +291,6 @@ class StackzillaResource(metaclass=SZMeta):
         """Persist the resource, and its attributes, in the database."""
         StackzillaDB.db.create_resource(resource=self)
 
-        for name in self.attributes:
-            StackzillaDB.db.create_attribute(resource=self, name=name, value=getattr(self, name))
-
     def delete_from_db(self):
         """Delete the resource, and all its attributes, from the database."""
         for name in self.attributes:
