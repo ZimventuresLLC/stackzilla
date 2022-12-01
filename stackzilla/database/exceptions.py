@@ -1,5 +1,8 @@
 """Exceptions for the database module."""
 
+class DatabaseCommitError(Exception):
+    """Raised when a database commit operation fails."""
+
 class DatabaseExists(Exception):
     """Raised if the database already exists during a create operation."""
 

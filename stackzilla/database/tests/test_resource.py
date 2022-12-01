@@ -51,9 +51,7 @@ def test_create_resource(database: StackzillaSQLiteDB):
     my_other_resource = MyOtherResource()
 
     database.create_resource(resource=my_resource)
-    for name in my_resource.attributes:
-        database.create_attribute(resource=my_resource, name=name, value=getattr(my_resource, name))
-
+ 
     db_resource = database.get_resource(path='database.tests.test_resource.MyResource')
     assert db_resource.__class__ == MyResource
     assert db_resource.version() == MyResource.version()
@@ -107,10 +105,6 @@ def test_duplicate_attributes(database: StackzillaSQLiteDB):
     my_resource = MyResource()
     my_resource.create_in_db()
 
-    # Snag a random attribute to persist to the database
-    with pytest.raises(DuplicateAttribute):
-        database.create_attribute(resource=my_resource, name='default_int', value=getattr(my_resource, 'default_int'))
-
 def test_invalid_delete_attribute(database: StackzillaSQLiteDB):
     """When deleting, make sure the correct exception is raised for attributes not in the database."""
     my_resource = MyResource()
@@ -134,9 +128,6 @@ def test_update_attribute(database: StackzillaSQLiteDB):
     """Ensure that updating attibutes in the database. works"""
     my_resource = MyResource()
     database.create_resource(resource=my_resource)
-
-    # Create the resource in the database with its default value
-    database.create_attribute(resource=my_resource, name='default_int', value=getattr(my_resource, 'default_int'))
 
     value = database.get_attribute(resource=my_resource, name='default_int')
     assert value == my_resource.default_int

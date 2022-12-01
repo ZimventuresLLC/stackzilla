@@ -112,16 +112,6 @@ class StackzillaDBBase(ABC):
     # Methods for interacting with StackzillaAttribute objects
     ###############################################################################
     @abstractmethod
-    def create_attribute(self, resource: 'StackzillaResource', name: str, value: Any):
-        """Adds a new attribute to the database.
-
-        Args:
-            resource (StackzillaResource): The parent resource for the attribute being created
-            name (str): The name of the attribute to create
-            value (Any): The value to assign to the newly created attribute
-        """
-
-    @abstractmethod
     def get_attribute(self, resource: 'StackzillaResource', name: str) -> Any:
         """Fetch the value for an attribute.
 
