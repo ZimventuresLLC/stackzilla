@@ -517,7 +517,7 @@ class StackzillaSQLiteDB(StackzillaDBBase):
             resource (StackzillaResource): The StackzillaResource that the attribute belongs to
             name (str): Name of the attribute as it's definined in the StackzillaResource class
             update_cache(bool): If True, skip reading from the attribute cache and pull from the DB.
-            
+
         Raises:
             AttributeNotFound: Raised if the attribute is not found in the database
 
