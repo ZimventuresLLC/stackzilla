@@ -187,13 +187,12 @@ def delete(dry_run):
         click.echo(f'Resources in this deletion phase {resources_in_phase}')
 
         for resource in phase:
-            obj = resource()
 
             try:
-                obj.load_from_db()
+                obj = resource.from_db()
             except ResourceNotFound:
                 # The resource was not found likely due to it not being correctly applied previously.
-                click.echo(f'{obj.path(remove_prefix=True)} was not in the database. Skipping.')
+                click.echo(f'{resource().path(remove_prefix=True)} was not in the database. Skipping.')
                 continue
 
             if dry_run is False:

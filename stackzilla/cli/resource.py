@@ -26,9 +26,8 @@ def show(path):
 
     # Load the resource specified by path
     try:
-        resource_obj: StackzillaResource = db_blueprint.get_resource(path=path)
-        resource_obj = resource_obj()
-        resource_obj.load_from_db()
+        resource_class: StackzillaResource = db_blueprint.get_resource(path=path)
+        resource_obj = resource_class.from_db()
     except ResourceNotFound as exc:
         raise click.ClickException('Resource specified by path not found') from exc
 
