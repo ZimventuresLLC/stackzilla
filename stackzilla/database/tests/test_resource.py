@@ -1,5 +1,7 @@
 """Verify the SQLite facility for resources."""
 # pylint: disable=abstract-method
+from unittest.mock import patch
+
 import pytest
 
 from stackzilla.attribute import StackzillaAttribute
@@ -51,7 +53,7 @@ def test_create_resource(database: StackzillaSQLiteDB):
     my_other_resource = MyOtherResource()
 
     database.create_resource(resource=my_resource)
- 
+
     db_resource = database.get_resource(path='database.tests.test_resource.MyResource')
     assert db_resource.__class__ == MyResource
     assert db_resource.version() == MyResource.version()
@@ -138,3 +140,25 @@ def test_update_attribute(database: StackzillaSQLiteDB):
     # Make sure that the updated value matches the original value + the modification
     updated_db_value = database.get_attribute(resource=my_resource, name='default_int')
     assert updated_db_value == my_resource.default_int + 100
+
+def test_attribute_cache(database: StackzillaSQLiteDB):
+    """Ensure the database isn't hit after the initial cache is loaded."""
+    my_resource = MyResource()
+    database.create_resource(resource=my_resource)
+
+    # Patch the lock_attr_cache context manager to ensure it isn't called (which would indicate a DB transaction)
+    with patch('stackzilla.database.sqlite.StackzillaSQLiteDB._write_attribute_cache') as write_cache_mock:
+        value = database.get_attribute(resource=my_resource, name='default_int')
+        assert value == my_resource.default_int
+        assert write_cache_mock.call_count == 0
+
+def test_attribute_cache_refresh(database: StackzillaSQLiteDB):
+    """Make sure cache invaliation works."""
+    my_resource = MyResource()
+    database.create_resource(resource=my_resource)
+
+    # Patch the execute context manager to ensure it IS called
+    with patch('stackzilla.database.sqlite.StackzillaSQLiteDB._write_attribute_cache') as write_cache_mock:
+        value = database.get_attribute(resource=my_resource, name='default_int', update_cache=True)
+        assert value == my_resource.default_int
+        assert write_cache_mock.call_count == 1

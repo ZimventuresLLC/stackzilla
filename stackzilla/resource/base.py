@@ -272,20 +272,37 @@ class StackzillaResource(metaclass=SZMeta):
         # There was no *_modified() method
         return False
 
-    def load_from_db(self, silent_fail: bool=False):
-        """Import all of the attribute values from the database."""
+    @classmethod
+    def from_db(cls, silent_fail: bool=False) -> 'StackzillaResource':
+        """Instantiate a copy of this object and load its attributes from the database.
+
+        Args:
+            silent_fail (bool, optional): If a failure occurs, skip raising an exception. Defaults to False.
+
+        Raises:
+            ResourceNotFound: Raised if the resource is not found in the database
+
+        Returns:
+            StackzillaResource: An instance of the class. None is returned if an error occurs and silent_fail is True.
+        """
+        # Instantiate a new object
+        obj = cls()
+
+        # Load all of the attributes from the database
         try:
-            for attribute_name in self.attributes:
-                value = StackzillaDB.db.get_attribute(resource=self, name=attribute_name)
-                setattr(self, attribute_name, value)
+            for attribute_name in obj.attributes:
+                value = StackzillaDB.db.get_attribute(resource=obj, name=attribute_name)
+                setattr(obj, attribute_name, value)
         except ResourceNotFound as err:
             if silent_fail is True:
-                return
+                return None
 
             raise err
 
         # Load the version number from the database
-        self._saved_version = StackzillaDB.db.get_resource_version(resource=self)
+        obj._saved_version = StackzillaDB.db.get_resource_version(resource=obj)
+
+        return obj
 
     def create_in_db(self):
         """Persist the resource, and its attributes, in the database."""

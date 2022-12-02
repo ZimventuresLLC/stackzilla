@@ -9,7 +9,7 @@ import sys
 from contextlib import contextmanager
 from sqlite3 import Connection, Cursor
 from threading import Lock
-from typing import Any, List, Optional
+from typing import Any, Dict, List, Optional
 
 from stackzilla.database.base import StackzillaDB, StackzillaDBBase
 from stackzilla.database.exceptions import (AttributeNotFound,
@@ -44,10 +44,16 @@ class StackzillaSQLiteDB(StackzillaDBBase):
         """
         super().__init__(name=f'{name}.db')
 
+        # Locking mechanism for database access
         self._lock: Lock = Lock()
         self._db: Optional[Connection] = None
         self._cursor: Optional[Cursor] = None
         self._logger = CoreLogger(component='StackzillaSQLiteDB')
+
+        # This is the cache for attribute values. The key is the full Python path for the resource, plus the attribute name.
+        # example: servers.MyServer.ip_addr
+        self._attribute_cache: Dict[str, Any] = {}
+        self._attr_cache_lock: Lock = Lock()
 
         # Set ourselves to the singleton member
         # Adding a special pytest check here for the unit test case. For unit testing there is no caching
@@ -64,6 +70,15 @@ class StackzillaSQLiteDB(StackzillaDBBase):
             yield
         finally:
             self._lock.release()
+
+    @contextmanager
+    def lock_attr_cache(self):
+        """Context manager to wrap the attribute cache lock."""
+        self._attr_cache_lock.acquire()
+        try:
+            yield
+        finally:
+            self._attr_cache_lock.release()
 
     @contextmanager
     def execute(self, query: str, params: dict = None, commit: bool = True):
@@ -288,7 +303,9 @@ class StackzillaSQLiteDB(StackzillaDBBase):
         Raises:
             CreateResourceFailure: Raised if a creation error occurs.
         """
-        self._logger.debug(f'INSERT {resource.path()}')
+        resource_path = resource.path()
+
+        self._logger.debug(f'INSERT {resource_path}')
         try:
             create_sql = """INSERT INTO StackzillaResource
             ("path", "version_major", "version_minor", "version_build", "version_name")
@@ -296,7 +313,7 @@ class StackzillaSQLiteDB(StackzillaDBBase):
 
             version = resource.version()
             create_params = {
-                'path': resource.path(),
+                'path': resource_path,
                 'version_major': version.major,
                 'version_minor': version.minor,
                 'version_build': version.build,
@@ -316,14 +333,22 @@ class StackzillaSQLiteDB(StackzillaDBBase):
 
                 # Crank through all of the attributes and persist them to the database
                 for name in resource.attributes:
+                    value = getattr(resource, name)
                     insert_data = {
                         'name': name,
-                        'value': self._value_encode(getattr(resource, name)),
+                        'value': self._value_encode(value),
                         'resource_id': resource_id
                     }
 
                     self._cursor.execute(attr_create_sql, insert_data)
-                    self.connection.commit()
+
+
+                    # Don't forget to update the attribute cache!
+                    with self.lock_attr_cache():
+                        self._attribute_cache[f'{resource_path}.{name}'] = value
+
+                # Do a single commit for all of the attributes that were just added.
+                self.connection.commit()
 
         except sqlite3.IntegrityError as exc:
             raise CreateResourceFailure() from exc
@@ -388,11 +413,8 @@ class StackzillaSQLiteDB(StackzillaDBBase):
         module = importlib.import_module(module_name)
         class_ = getattr(module, class_name)
 
-        obj = class_()
-
         # Load all of the attribute values from the database
-        obj.load_from_db()
-
+        obj = class_.from_db()
         return obj
 
     def get_resource_version(self, resource: StackzillaResource) -> ResourceVersion:
@@ -453,6 +475,12 @@ class StackzillaSQLiteDB(StackzillaDBBase):
         with self.execute(query=delete_sql, params={'attribute_id': attribute_id}):
             pass
 
+        # Remove the attribute from the cache (if present)
+        with self.lock_attr_cache():
+            full_path = f'{resource.path()}.{name}'
+            if full_path in self._attribute_cache:
+                del self._attribute_cache[full_path]
+
     def update_attribute(self, resource: StackzillaResource, name: str, value: Any):
         """Update a previously created attribute.
 
@@ -480,20 +508,33 @@ class StackzillaSQLiteDB(StackzillaDBBase):
         with self.execute(query=update_sql, params=update_data):
             pass
 
-    def get_attribute(self, resource: StackzillaResource, name: str) -> Any:
+        self._write_attribute_cache(key=f'{resource.path()}.{name}', value=value)
+
+    def get_attribute(self, resource: StackzillaResource, name: str, update_cache: bool=False) -> Any:
         """Fetch a single attribute from the dataase.
 
         Args:
             resource (StackzillaResource): The StackzillaResource that the attribute belongs to
             name (str): Name of the attribute as it's definined in the StackzillaResource class
-
+            update_cache(bool): If True, skip reading from the attribute cache and pull from the DB.
+            
         Raises:
             AttributeNotFound: Raised if the attribute is not found in the database
 
         Returns:
             Any: The value corresponding to the specified attribute name
         """
-        resource_id = self._resource_id_from_path(path=resource.path())
+        # Python path of the resource
+        resource_path = resource.path()
+
+        # Check if the attribute cache already has the data
+        if update_cache is False:
+            with self.lock_attr_cache():
+                full_path = f'{resource_path}.{name}'
+                if full_path in self._attribute_cache:
+                    return self._attribute_cache[full_path]
+
+        resource_id = self._resource_id_from_path(path=resource_path)
 
         select_sql = 'SELECT * FROM StackzillaAttribute WHERE resource_id=:resource_id AND name=:name'
         select_args = {'resource_id': resource_id, 'name': name}
@@ -505,7 +546,16 @@ class StackzillaSQLiteDB(StackzillaDBBase):
         if row is None:
             raise AttributeNotFound(f'{name=} | {resource_id=}')
 
-        return self._value_decode(row['value'])
+        data = self._value_decode(row['value'])
+
+        # Save the result in the attribute cache
+        self._write_attribute_cache(key=f'{resource_path}.{name}', value=data)
+        return data
+
+    def _write_attribute_cache(self, key: str, value: Any) -> None:
+        """Helper method to make testing easier."""
+        with self.lock_attr_cache():
+            self._attribute_cache[key] = value
 
     def create_blueprint_module(self, path: str, data: Optional[str] = None) -> None:
         """Create a blueprint module within the database.

@@ -21,13 +21,12 @@ def get_resource_from_path(path: str, resource_type: Optional[Type]=StackzillaRe
     # Load the resource specified by path
     try:
         resource: StackzillaResource = db_blueprint.get_resource(path=path)
-        resource = resource()
-        resource.load_from_db()
+        obj = resource.from_db()
 
         # Perform a type check
-        if issubclass(resource.__class__, resource_type) is False:
-            raise click.ClickException(f'{resource.path()} is not a {resource_type} resource.')
+        if issubclass(obj.__class__, resource_type) is False:
+            raise click.ClickException(f'{obj.path()} is not a {resource_type} resource.')
 
-        return resource
+        return obj
     except ResourceNotFound as exc:
         raise click.ClickException('Resource specified by path not found') from exc

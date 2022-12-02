@@ -3,7 +3,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass
 from enum import Enum, auto
 from io import StringIO
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple, Type
 
 from colorama import Fore, Style
 
@@ -228,9 +228,7 @@ class StackzillaDiff:
                 # Apply the diff for all of the resources in this phase
                 futures = []
                 for resource in phase:
-
-                    obj = resource()
-                    futures.append(executor.submit(self._apply_resource, obj=obj))
+                    futures.append(executor.submit(self._apply_resource, resource=resource))
 
                 # Process the results
                 for result in as_completed(futures):
@@ -249,7 +247,7 @@ class StackzillaDiff:
                 raise ApplyErrors(errors=errors)
 
     # pylint: disable=too-many-branches,too-many-locals,too-many-statements,line-too-long
-    def _apply_resource(self, obj: StackzillaResource):
+    def _apply_resource(self, resource: Type[StackzillaResource]):
         """Apply the diff for a spacified resource."""
         errors = []
 
@@ -258,8 +256,11 @@ class StackzillaDiff:
         import pssh.clients.ssh
 
         # Need to load the resource from the database so that any dynamic attributes are present
-        # NOTE: If the resource is not in the database, no big deal, we'll just silently fail
-        obj.load_from_db(silent_fail=True)
+        # NOTE: If the resource is not in the database, no big deal, we'll just instantiate the object directly
+        try:
+            obj = resource.from_db()
+        except ResourceNotFound:
+            obj = resource()
 
         diff: StackzillaResourceDiff = self._result.resource_diffs[obj.path()]
 
@@ -383,10 +384,10 @@ class StackzillaDiff:
 
         # If the blueprint contains resources not in the database, omit them from consideration
         for resource_name in list(dest_resources.keys()):
-            dest_resource: StackzillaResource = dest_resources[resource_name]()
+            dest_resource: StackzillaResource = dest_resources[resource_name]
 
             try:
-                dest_resource.load_from_db()
+                dest_resource.from_db()
             except ResourceNotFound:
                 del dest_resources[resource_name]
 
@@ -398,19 +399,19 @@ class StackzillaDiff:
 
             # Is the resource available in both the source and destination
             if resource_name in dest_resources:
-                dest_resource: StackzillaResource = dest_resources[resource_name]()
-                dest_resource.load_from_db()
+                dest_resource: StackzillaResource = dest_resources[resource_name]
+                dest_obj = dest_resource.from_db()
 
                 # Check for version incompatibilities
-                self.compare_versions(source=src_resource, destination=dest_resource)
+                self.compare_versions(source=src_resource, destination=dest_obj)
 
                 # Diff the resource versions
-                attr_diff_result, attr_diffs = self.compare_attributes(source=src_resource, destination=dest_resource)
+                attr_diff_result, attr_diffs = self.compare_attributes(source=src_resource, destination=dest_obj)
 
                 if attr_diff_result == StackzillaDiffResult.SAME:
                     # Nothing to do - move along!
                     diffs[resource_name] = StackzillaResourceDiff(src_resource=src_resource,
-                                                                  dest_resource=dest_resource,
+                                                                  dest_resource=dest_obj,
                                                                   result=StackzillaDiffResult.SAME,
                                                                   attribute_diffs={})
                     continue
@@ -418,7 +419,7 @@ class StackzillaDiff:
                 if attr_diff_result in [StackzillaDiffResult.CONFLICT, StackzillaDiffResult.REBUILD_REQUIRED]:
                     result = attr_diff_result
                     diffs[resource_name] = StackzillaResourceDiff(src_resource=src_resource,
-                                                                  dest_resource=dest_resource,
+                                                                  dest_resource=dest_obj,
                                                                   result=result,
                                                                   attribute_diffs=attr_diffs)
 
