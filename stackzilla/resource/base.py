@@ -75,7 +75,12 @@ class StackzillaResource(metaclass=SZMeta):
         # This is used during the blueprint diff/verification process
         self._saved_version: Optional[ResourceVersion] = None
 
-        self.on_create_done = StackzillaEvent()
+        # Events
+        self.create_done_event = StackzillaEvent()
+        self.rebuild_done_event = StackzillaEvent()
+        self.delete_done_event = StackzillaEvent()
+        self.attribute_modified_event = StackzillaEvent()
+        self.attributes_modified_event = StackzillaEvent()
 
     @classmethod
     def path(cls, remove_prefix: bool=False) -> str:

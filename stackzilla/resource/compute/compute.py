@@ -46,7 +46,7 @@ class StackzillaCompute(StackzillaResource):
         super().__init__()
 
         # Attach a handler for when the instance is done being created
-        self.on_create_done.attach(handler=self._on_create_done)
+        self.create_done_event.attach(handler=self._on_create_done)
 
     def _on_create_done(self, sender: StackzillaResource): # pylint: disable=unused-argument
         """Event handler for when the compute creation is complete.
