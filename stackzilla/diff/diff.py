@@ -280,16 +280,25 @@ class StackzillaDiff:
                 # pylint: disable=protected-access
                 try:
                     if obj._on_attribute_modified(attribute_name=attr_name,
-                                                    previous_value=attr_diff.dest_value,
-                                                    new_value=attr_diff.src_value):
+                                                  previous_value=attr_diff.dest_value,
+                                                  new_value=attr_diff.src_value):
 
                         # Note that the attribute modification has been handled
                         modified_attrs[attr_name].handled = True
+
+                        # Invoke the individual event handler
+                        obj.attribute_modified_event.invoke(sender=obj,
+                                                            attribute_name=attr_name,
+                                                            previous_value=attr_diff.dest_value,
+                                                            new_value=attr_diff.src_value)
                 except AttributeModifyFailure as exc:
                     modified_attrs[attr_name].error = exc
 
             # Invoke the "all-in-one" handler
             obj.on_attributes_modified(attributes=modified_attrs)
+
+            # Invoke the callback handler for all events
+            obj.attributes_modified_event.invoke(sender=obj, attriubtes=modified_attrs)
 
             # Check for any unhandled attributes
             unhandled_attributes = []
@@ -314,25 +323,28 @@ class StackzillaDiff:
                 # raise its own excption and "mask" the modify attribute failures. The developer should fix this
                 # issue first!
                 raise UnhandledAttributeModifications(unhandled_attributes)
+
         elif diff.result == StackzillaDiffResult.REBUILD_REQUIRED:
             diff.dest_resource.delete()
+            diff.dest_resource.delete_done_event.invoke(sender=diff.dest_resource)
             try:
                 diff.src_resource.create()
-                diff.src_resource.on_create_done.invoke(sender=diff.src_resource)
+                diff.src_resource.rebuild_done_event.invoke(sender=diff.src_resource)
             except ResourceCreateFailure as exc:
                 errors.append(f'{exc.resource_name}: {exc.reason}')
             except HandlerException as exc:
-                errors.append(f'on_create_done handler failed with: {str(exc)}')
+                errors.append(f'create handler failed with: {str(exc)}')
 
         elif diff.result == StackzillaDiffResult.DELETED:
             try:
                 diff.dest_resource.delete()
+                diff.dest_resource.delete_done_event.invoke(sender=diff.dest_resource)
             except ResourceDeleteFailure as exc:
                 errors.append(f'{exc.resource_name}: {exc.reason}')
         elif diff.result == StackzillaDiffResult.NEW:
             try:
                 diff.src_resource.create()
-                diff.src_resource.on_create_done.invoke(sender=diff.src_resource)
+                diff.src_resource.create_done_event.invoke(sender=diff.src_resource)
             except ResourceCreateFailure as exc:
                 errors.append(f'{exc.resource_name}: {exc.reason}')
             except HandlerException as exc:

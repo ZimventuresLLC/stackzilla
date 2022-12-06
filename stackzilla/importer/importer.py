@@ -118,6 +118,8 @@ class Importer(BaseImporter):
             self._current_spec_path = path
             module_spec = ModuleSpec(name, self)
 
+
+
         path_on_disk = os.path.join(self.bp_path, f'{name}.py')
         if os.path.exists(path_on_disk):
             self._current_spec_path = path
