@@ -29,8 +29,11 @@ def ssh(path, command):
         raise click.ClickException(f'Failed to connect: {str(exc)}') from exc
 
     output = ssh_client.run_command(command=command)
-    for line in output.stdout:
-        print(line)
+    
+    if output.exit_code:
+        raise click.ClickException(output.stderr)
+
+    click.echo(output.stdout)
 
 @compute.command('get-ssh-key')
 @path_option

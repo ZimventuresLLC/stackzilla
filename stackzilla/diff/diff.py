@@ -204,9 +204,8 @@ class StackzillaDiff:
         # Check the destination blueprint for resources not in the source blueprint (deleted)
         for resource_name in self._dest_blueprint.resources:
             if resource_name not in self._src_blueprint.resources:
-                deleted_resource = self._dest_blueprint.resources[resource_name]()
+                deleted_resource = self._dest_blueprint.resources[resource_name].from_db()
                 deleted_resource.delete()
-                deleted_resource.delete_from_db()
 
         # Dump all of the packages to the database
         StackzillaDB.db.delete_all_blueprint_packages()
